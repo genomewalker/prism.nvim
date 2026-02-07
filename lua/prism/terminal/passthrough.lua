@@ -170,6 +170,29 @@ function M.setup(bufnr)
 			vim.wo.signcolumn = "no"
 		end,
 	})
+
+	-- Click to enter insert mode (left click)
+	vim.keymap.set("n", "<LeftMouse>", function()
+		-- First do the normal click to position cursor
+		vim.cmd("normal! <LeftMouse>")
+		-- Then enter insert mode
+		vim.cmd("startinsert")
+	end, {
+		buffer = bufnr,
+		noremap = true,
+		silent = true,
+		desc = "Click to enter terminal insert mode",
+	})
+
+	-- Also enter insert mode when focusing the terminal buffer
+	vim.api.nvim_create_autocmd("BufEnter", {
+		buffer = bufnr,
+		callback = function()
+			if vim.bo[bufnr].buftype == "terminal" then
+				vim.cmd("startinsert")
+			end
+		end,
+	})
 end
 
 --- Enable passthrough mode globally for all new terminals
