@@ -173,9 +173,11 @@ function M.setup(bufnr)
 
 	-- Click to enter insert mode (left click)
 	vim.keymap.set("n", "<LeftMouse>", function()
-		-- First do the normal click to position cursor
-		vim.cmd("normal! <LeftMouse>")
-		-- Then enter insert mode
+		-- Position cursor with the mouse click, then enter insert mode
+		local mouse = vim.fn.getmousepos()
+		if mouse and mouse.line > 0 then
+			pcall(vim.api.nvim_win_set_cursor, 0, { mouse.line, mouse.column - 1 })
+		end
 		vim.cmd("startinsert")
 	end, {
 		buffer = bufnr,
