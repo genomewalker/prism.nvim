@@ -23,7 +23,7 @@ jobs:
           pip install ruff black
 
       - name: Check formatting with black
-        run: black --check prism_nvim/
+        run: black --check --config pyproject.toml prism_nvim/
 
       - name: Lint with ruff
         run: ruff check prism_nvim/
