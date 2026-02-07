@@ -1,25 +1,143 @@
 ---
 name: prism
 description: Install and configure prism.nvim - Neovim integration with token-saving MCP tools
-argument-hint: "[install|status|help]"
+argument-hint: "[install|update|status|help]"
 execution: direct
 ---
 
 # Prism.nvim - Claude Code + Neovim Integration
 
-You are installing prism.nvim, which lets Claude control Neovim via MCP tools for 10-50x token savings.
+Claude controls your editor directly. Talk to it. Watch it edit. 55+ MCP tools with 10-50x token savings.
 
 ## Handle Arguments
 
 Based on `$ARGUMENTS`:
 
-- **install** (or no args): Run full installation
-- **status**: Check if prism is installed and MCP connected
-- **help**: Show usage information
+- **install** (or no args): Run full installation (idempotent)
+- **update**: Update prism to latest version
+- **status**: Check installation status and MCP connection
+- **help**: Show usage information and available commands
 
-## Installation Steps (Idempotent)
+---
 
-All steps check if already done before making changes.
+## Command: help
+
+Display this information:
+
+```
+/prism - Neovim integration with Claude Code
+
+Commands:
+  /prism install  - Install or reinstall prism.nvim (idempotent)
+  /prism update   - Update to latest version
+  /prism status   - Check installation and MCP connection
+  /prism help     - Show this help
+
+After install:
+  1. Restart Claude Code to load MCP server
+  2. Open Neovim, press Ctrl+; to toggle Claude terminal
+  3. Talk naturally: "go to line 42", "fix this error", "commit with message X"
+
+Shell commands (after install):
+  nvc              - Open nvim with Claude
+  nvc -c           - Continue last conversation
+  nvc --model opus - Use Opus model
+  nvco             - Shortcut for nvc --model opus
+```
+
+---
+
+## Command: update
+
+Quick update without full reinstall:
+
+```bash
+PRISM_DIR="$HOME/.local/share/prism.nvim"
+if [ ! -d "$PRISM_DIR" ]; then
+  echo "Prism not installed. Run /prism install first."
+  exit 1
+fi
+
+cd "$PRISM_DIR"
+OLD_VERSION=$(grep '^version' pyproject.toml 2>/dev/null | cut -d'"' -f2)
+echo "Current version: $OLD_VERSION"
+
+git fetch origin main --quiet
+BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
+
+if [ "$BEHIND" -eq 0 ]; then
+  echo "Already up to date"
+else
+  echo "Updating ($BEHIND commits behind)..."
+  git pull
+  NEW_VERSION=$(grep '^version' pyproject.toml | cut -d'"' -f2)
+  echo "Updated to version: $NEW_VERSION"
+
+  if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+    echo ""
+    echo "Version changed: $OLD_VERSION -> $NEW_VERSION"
+    echo "Restart Claude Code to apply changes."
+  fi
+fi
+```
+
+After running, tell the user:
+- If version changed: **Restart Claude Code** to load updated MCP server
+- Check the changelog for new features
+
+---
+
+## Command: status
+
+Run these checks and report results in a table:
+
+```bash
+PRISM_DIR="$HOME/.local/share/prism.nvim"
+if [ -d "$PRISM_DIR" ]; then
+  cd "$PRISM_DIR"
+  LOCAL_VERSION=$(grep '^version' pyproject.toml 2>/dev/null | cut -d'"' -f2)
+  git fetch origin main --quiet 2>/dev/null
+  BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
+  echo "version:$LOCAL_VERSION"
+  echo "behind:$BEHIND"
+else
+  echo "version:not installed"
+fi
+```
+
+```bash
+python3 -c "import msgpack" 2>/dev/null && echo "msgpack:ok" || echo "msgpack:missing"
+[ -L ~/.local/share/nvim/site/pack/prism/start/prism.nvim ] && echo "plugin:linked" || echo "plugin:missing"
+grep -q '"prism-nvim"' ~/.claude/settings.json 2>/dev/null && echo "mcp:configured" || echo "mcp:missing"
+[ -L ~/.claude/rules/prism-nvim.md ] && echo "rules:linked" || echo "rules:missing"
+[ -f ~/.config/nvim/lua/plugins/prism.lua ] && echo "nvim_config:exists" || echo "nvim_config:missing"
+grep -q "nvc()" ~/.zshrc 2>/dev/null && echo "shell_zsh:configured" || grep -q "nvc()" ~/.bashrc 2>/dev/null && echo "shell_bash:configured" || echo "shell:missing"
+```
+
+Also try MCP connection: `mcp__prism-nvim__get_current_file`
+- If it works: MCP connected
+- If it fails: MCP not connected (Neovim may not be running)
+
+Present results as:
+
+| Component | Status |
+|-----------|--------|
+| Version | X.Y.Z (N commits behind) |
+| Python msgpack | OK / Missing |
+| Neovim plugin | Linked / Missing |
+| MCP server | Configured / Missing |
+| Rules | Linked / Missing |
+| Nvim config | Exists / Missing |
+| Shell alias | Configured / Missing |
+| MCP connection | Connected / Not connected |
+
+If any component is missing, suggest running `/prism install`.
+
+---
+
+## Command: install
+
+Full installation (all steps are idempotent - safe to run multiple times).
 
 ### Step 1: Clone or Update Repository
 
@@ -27,11 +145,9 @@ All steps check if already done before making changes.
 PRISM_DIR="$HOME/.local/share/prism.nvim"
 if [ -d "$PRISM_DIR" ]; then
   cd "$PRISM_DIR"
-  # Check current version
   LOCAL_VERSION=$(grep '^version' pyproject.toml 2>/dev/null | cut -d'"' -f2)
   echo "Current version: $LOCAL_VERSION"
 
-  # Fetch and check for updates
   git fetch origin main --quiet
   BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
 
@@ -66,6 +182,7 @@ if [ -L "$PACK_DIR/prism.nvim" ]; then
 else
   mkdir -p "$PACK_DIR"
   ln -sf "$HOME/.local/share/prism.nvim" "$PACK_DIR/prism.nvim"
+  echo "Neovim plugin linked"
 fi
 ```
 
@@ -106,27 +223,16 @@ return {
     },
     config = function()
       require("prism").setup({
-        -- MCP server is handled by Python, disable Lua server
-        mcp = {
-          auto_start = false,
-        },
-        -- Terminal settings
+        mcp = { auto_start = false },
         terminal = {
           provider = "native",
           position = "vertical",
           width = 0.4,
-          auto_start = false,  -- Set true to auto-open Claude terminal
-          passthrough = true,  -- Real terminal: only Ctrl+\ Ctrl+\ escapes
+          auto_start = false,
+          passthrough = true,
         },
-        -- Claude flags (set via nvc command or CLAUDE_ARGS env)
-        claude = {
-          model = nil,
-          continue_session = false,
-        },
-        -- Trust mode for edits
-        trust = {
-          mode = "companion",  -- "guardian" | "companion" | "autopilot"
-        },
+        claude = { model = nil, continue_session = false },
+        trust = { mode = "companion" },
       })
     end,
     keys = {
@@ -134,8 +240,6 @@ return {
       { "<leader>ct", "<cmd>PrismToggle<cr>", desc = "Prism: Toggle Terminal" },
       { "<leader>cs", "<cmd>PrismSend<cr>", mode = { "n", "v" }, desc = "Prism: Send to Claude" },
       { "<leader>ca", "<cmd>PrismAction<cr>", mode = { "n", "v" }, desc = "Prism: Code Actions" },
-      { "<leader>cd", "<cmd>PrismDiff<cr>", desc = "Prism: Show Diff" },
-      { "<leader>cm", "<cmd>PrismModel<cr>", desc = "Prism: Switch Model" },
       { "<C-\\>", "<cmd>PrismToggle<cr>", desc = "Toggle Prism Terminal" },
     },
   },
@@ -153,22 +257,7 @@ return {
 ```bash
 mkdir -p ~/.claude/rules
 ln -sf ~/.local/share/prism.nvim/CLAUDE.md ~/.claude/rules/prism-nvim.md
-```
-
-This auto-loads prism instructions in every Claude session. Optionally also append to `~/.claude/CLAUDE.md`:
-
-```markdown
-# Prism.nvim MCP Integration
-
-When connected to Neovim via prism.nvim, **prefer MCP tools over standard tools**:
-
-| Task | MCP Tool | Saves |
-|------|----------|-------|
-| Read file | `mcp__prism-nvim__get_buffer_content` | 10-50x |
-| Edit file | `mcp__prism-nvim__run_command("%s/old/new/g")` | 20-30x |
-| Open file | `mcp__prism-nvim__open_file` | 5x |
-
-Check connection: `mcp__prism-nvim__get_current_file`
+echo "Rules linked"
 ```
 
 ### Step 7: Add Shell Aliases
@@ -179,18 +268,20 @@ Use AskUserQuestion to ask which shell the user uses:
 question: "Which shell do you use?"
 header: "Shell"
 options:
-  - label: "Bash"
-    description: "Add aliases to ~/.bashrc"
   - label: "Zsh"
     description: "Add aliases to ~/.zshrc"
+  - label: "Bash"
+    description: "Add aliases to ~/.bashrc"
   - label: "Fish"
     description: "Add functions to ~/.config/fish/functions/"
+  - label: "Skip"
+    description: "Don't add shell aliases"
 ```
 
 **Check if nvc already exists** before adding:
 ```bash
-grep -q "nvc()" ~/.bashrc 2>/dev/null && echo "nvc already in bashrc"
 grep -q "nvc()" ~/.zshrc 2>/dev/null && echo "nvc already in zshrc"
+grep -q "nvc()" ~/.bashrc 2>/dev/null && echo "nvc already in bashrc"
 ```
 
 Only append if not already present:
@@ -243,37 +334,16 @@ function nvc
 end
 ```
 
+---
+
 ## After Installation
 
 Tell the user:
 
 1. **Restart Claude Code** to load the MCP server
-2. **Open Neovim** and run `:lua require('prism.core').setup()`
+2. **Open Neovim** - prism loads automatically
 3. **Press Ctrl+;** to toggle Claude terminal
-4. **Use Ctrl+\ Ctrl+\** to exit terminal mode
-
-## Status Check
-
-Run these checks and report results:
-
-```bash
-PRISM_DIR="$HOME/.local/share/prism.nvim"
-if [ -d "$PRISM_DIR" ]; then
-  cd "$PRISM_DIR"
-  LOCAL_VERSION=$(grep '^version' pyproject.toml 2>/dev/null | cut -d'"' -f2)
-  git fetch origin main --quiet 2>/dev/null
-  BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
-  echo "Version: $LOCAL_VERSION (${BEHIND} commits behind)"
-else
-  echo "Not installed"
-fi
-```
-
-Also check:
-1. **MCP connection**: Try `mcp__prism-nvim__get_current_file` - if it works, MCP is connected
-2. **Settings**: `grep -q '"prism-nvim"' ~/.claude/settings.json && echo "MCP configured"`
-3. **Neovim plugin**: `[ -L ~/.local/share/nvim/site/pack/prism/start/prism.nvim ] && echo "Plugin linked"`
-4. **Rules linked**: `[ -L ~/.claude/rules/prism-nvim.md ] && echo "Rules linked"`
+4. **Use Ctrl+\ Ctrl+\** to exit terminal mode (passthrough)
 
 ## Token Savings
 
@@ -284,16 +354,18 @@ Explain that MCP tools save tokens because:
 
 ## Natural Language Interface
 
-Prism tools respond to natural language. Users can speak naturally and Claude maps to MCP tools:
+Prism's 55+ MCP tools respond to natural language:
 
-| User says | Claude does |
-|-----------|-------------|
+| You say | Claude does |
+|---------|-------------|
 | "go to line 42" | `goto_line(42)` |
-| "open main.lua" | `open_file("main.lua")` |
-| "show errors" | `get_diagnostics` |
-| "fix this" | `code_actions(apply_first=true)` |
+| "show me errors" | `get_diagnostics` |
+| "fix this error" | `fix_diagnostic` |
 | "replace foo with bar" | `search_and_replace("foo", "bar")` |
 | "be more careful" | `set_trust_mode("guardian")` |
+| "just do it" | `set_trust_mode("autopilot")` |
 | "teach me vim" | `set_config(narrated=true)` |
+| "commit with message X" | `git_commit("X")` |
+| "who wrote this?" | `git_blame` |
 
-See CLAUDE.md for the complete NL reference.
+See CLAUDE.md for the complete natural language reference.
