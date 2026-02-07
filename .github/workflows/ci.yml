@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruff black
+          pip install ruff black==25.1.0
 
       - name: Check formatting with black
         run: black --check --config pyproject.toml prism_nvim/
