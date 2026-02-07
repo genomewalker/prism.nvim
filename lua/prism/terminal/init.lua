@@ -161,7 +161,8 @@ local function build_command(opts)
   end
 
   -- Custom flags from env (space-separated)
-  local env_flags = vim.env.CLAUDE_FLAGS
+  -- Support both CLAUDE_ARGS (from nvc function) and CLAUDE_FLAGS
+  local env_flags = vim.env.CLAUDE_ARGS or vim.env.CLAUDE_FLAGS
   if env_flags and env_flags ~= "" then
     for flag in env_flags:gmatch("%S+") do
       table.insert(cmd, flag)
