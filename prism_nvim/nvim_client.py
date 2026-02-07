@@ -510,7 +510,7 @@ class NeovimClient:
         try:
             self.lua("vim.lsp.buf.definition()")
             return True
-        except:
+        except Exception:
             return False
 
     def get_hover_info(self) -> Optional[str]:
@@ -532,7 +532,7 @@ class NeovimClient:
             """
             )
             return result
-        except:
+        except Exception:
             return None
 
     def code_action(self) -> None:

@@ -155,11 +155,11 @@ def install(nvim_socket: str, plugin_only: bool, mcp_only: bool):
         warn("Claude Code CLI not found. Install it to use full features.")
 
     # Check msgpack
-    try:
-        import msgpack
+    import importlib.util
 
+    if importlib.util.find_spec("msgpack"):
         success("msgpack library available")
-    except ImportError:
+    else:
         warn("msgpack not installed. Installing...")
         subprocess.run([sys.executable, "-m", "pip", "install", "msgpack"])
 
@@ -214,8 +214,8 @@ return {{
     keys = {{
       {{ "<leader>cc", "<cmd>Prism<cr>", desc = "Prism: Open Layout" }},
       {{ "<leader>ct", "<cmd>PrismToggle<cr>", desc = "Prism: Toggle Terminal" }},
-      {{ "<leader>cs", "<cmd>PrismSend<cr>", mode = {{ "n", "v" }}, desc = "Prism: Send to Claude" }},
-      {{ "<leader>ca", "<cmd>PrismAction<cr>", mode = {{ "n", "v" }}, desc = "Prism: Code Actions" }},
+      {{ "<leader>cs", "<cmd>PrismSend<cr>", mode = {{ "n", "v" }}, desc = "Send" }},
+      {{ "<leader>ca", "<cmd>PrismAction<cr>", mode = {{ "n", "v" }}, desc = "Actions" }},
       {{ "<leader>cd", "<cmd>PrismDiff<cr>", desc = "Prism: Show Diff" }},
       {{ "<leader>cm", "<cmd>PrismModel<cr>", desc = "Prism: Switch Model" }},
       {{ "<C-\\\\>", "<cmd>PrismToggle<cr>", desc = "Toggle Prism Terminal" }},
@@ -585,7 +585,7 @@ def status():
             success(f"Neovim processes: {len(pids)} running")
         else:
             info("Neovim: Not running")
-    except:
+    except Exception:
         pass
 
 

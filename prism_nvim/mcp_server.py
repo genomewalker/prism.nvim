@@ -13,6 +13,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
+from .nvim_client import NeovimClient
+
 
 class BytesEncoder(json.JSONEncoder):
     """Custom JSON encoder that handles bytes and dataclasses."""
@@ -24,8 +26,6 @@ class BytesEncoder(json.JSONEncoder):
             return asdict(obj)
         return super().default(obj)
 
-
-from .nvim_client import NeovimClient
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class PrismMCPServer:
 
         self._register_tool(
             name="set_buffer_content",
-            description="Replace the entire content of a buffer. Use auto_save=true for automatic mode.",
+            description="Replace entire buffer content. Use auto_save=true to save.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -226,7 +226,7 @@ class PrismMCPServer:
 
         self._register_tool(
             name="edit_buffer",
-            description="Edit specific lines in a buffer. Replaces lines from start to end with new lines. Use auto_save=true for automatic mode.",
+            description="Edit specific lines. Replaces start to end with new lines.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -531,7 +531,7 @@ class PrismMCPServer:
 
         self._register_tool(
             name="set_config",
-            description="Set prism-nvim configuration. Use narrated=true to learn vim - shows vim commands as they execute.",
+            description="Set prism config. narrated=true shows vim commands.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -541,11 +541,11 @@ class PrismMCPServer:
                     },
                     "keep_focus": {
                         "type": "boolean",
-                        "description": "Return focus to terminal after opening files (default: true)",
+                        "description": "Return focus to terminal (default: true)",
                     },
                     "narrated": {
                         "type": "boolean",
-                        "description": "Show vim commands as they execute - great for learning vim! (default: false)",
+                        "description": "Show vim commands as they execute (default: false)",
                     },
                 },
             },
@@ -554,7 +554,7 @@ class PrismMCPServer:
 
         self._register_tool(
             name="diff_preview",
-            description="Show diff preview in editor area. Terminal stays focused. Shows original vs proposed changes side by side.",
+            description="Show diff preview. Original vs proposed changes side by side.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1471,7 +1471,7 @@ class PrismMCPServer:
                     # Return focus to terminal
                     try:
                         self.nvim.call("nvim_set_current_win", current_win)
-                    except:
+                    except Exception:
                         pass  # Window may be invalid
                     return {"success": True, "protected": True}
 
@@ -1561,7 +1561,7 @@ class PrismMCPServer:
 
         return {
             "success": True,
-            "message": "Diff preview opened in editor area. Use :diffoff and :bd to close when done.",
+            "message": "Diff preview opened. Use :diffoff and :bd to close.",
         }
 
     def _handle_undo(self, count: int = 1) -> dict:
@@ -1575,7 +1575,6 @@ class PrismMCPServer:
     def _handle_redo(self, count: int = 1) -> dict:
         """Redo changes."""
         count = int(count) if count else 1
-        vim_cmd = "<C-r>" if count == 1 else f"{count}<C-r>"
         for _ in range(count):
             self.nvim.command("normal! \\<C-r>")
         self._narrate(f"Redo (Ctrl+R ×{count})")
@@ -1923,11 +1922,13 @@ class PrismMCPServer:
         severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
         vim_severity = severity_map.get(severity, "ERROR")
 
-        self.nvim.command(
-            f"lua vim.diagnostic.goto_next({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})"
+        lua_cmd = (
+            f"vim.diagnostic.goto_next({{severity={{min="
+            f"vim.diagnostic.severity.{vim_severity}}}}})"
         )
+        self.nvim.command(f"lua {lua_cmd}")
         cursor = self.nvim.get_cursor()
-        self._narrate(f"Jump to next {severity} (vim.diagnostic.goto_next())")
+        self._narrate(f"Jump to next {severity}")
         return {
             "success": True,
             "line": cursor[0],
@@ -1941,11 +1942,13 @@ class PrismMCPServer:
         severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
         vim_severity = severity_map.get(severity, "ERROR")
 
-        self.nvim.command(
-            f"lua vim.diagnostic.goto_prev({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})"
+        lua_cmd = (
+            f"vim.diagnostic.goto_prev({{severity={{min="
+            f"vim.diagnostic.severity.{vim_severity}}}}})"
         )
+        self.nvim.command(f"lua {lua_cmd}")
         cursor = self.nvim.get_cursor()
-        self._narrate(f"Jump to previous {severity} (vim.diagnostic.goto_prev())")
+        self._narrate(f"Jump to previous {severity}")
         return {
             "success": True,
             "line": cursor[0],
@@ -2244,8 +2247,6 @@ class PrismMCPServer:
             sys.exit(1)
 
         # Use text mode for NDJSON - Claude Code sends one JSON per line
-        import sys
-
         while True:
             try:
                 # Read one line (one JSON message)
@@ -2609,12 +2610,10 @@ class PrismMCPServer:
         # Indentation
         if tool_name == "indent":
             lines = result.get("lines", 1)
-            levels = result.get("levels", 1)
             return f"→ Indented {lines} line{'s' if lines != 1 else ''} (>>)"
 
         if tool_name == "dedent":
             lines = result.get("lines", 1)
-            levels = result.get("levels", 1)
             return f"← Dedented {lines} line{'s' if lines != 1 else ''} (<<)"
 
         # Navigation
