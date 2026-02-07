@@ -4,14 +4,11 @@ Neovim RPC Client - Communicates with Neovim via msgpack-rpc
 This module provides a clean interface to control Neovim programmatically.
 """
 
-import socket
-import struct
 import os
-import subprocess
-import time
-from pathlib import Path
-from typing import Any, Optional, Union
+import socket
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Optional
 
 # Try to import msgpack, fall back to pure Python implementation
 try:
@@ -553,9 +550,9 @@ class NeovimClient:
     def search(self, pattern: str, flags: str = "") -> list[tuple[int, int]]:
         """Search for a pattern in the current buffer."""
         results = self.lua(
-            f"""
+            """
             local pattern = ...
-            local results = {{}}
+            local results = {}
             local buf = vim.api.nvim_get_current_buf()
             local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
             for i, line in ipairs(lines) do
@@ -563,7 +560,7 @@ class NeovimClient:
                 while true do
                     local s, e = line:find(pattern, start)
                     if not s then break end
-                    table.insert(results, {{i, s - 1}})
+                    table.insert(results, {i, s - 1})
                     start = e + 1
                 end
             end
@@ -576,7 +573,7 @@ class NeovimClient:
     def replace(self, pattern: str, replacement: str, flags: str = "g") -> int:
         """Replace pattern in current buffer. Returns count of replacements."""
         count = self.lua(
-            f"""
+            """
             local pattern, replacement, flags = ...
             vim.cmd(string.format('%%s/%s/%s/%s', pattern, replacement, flags))
             return vim.v.searchcount.total or 0

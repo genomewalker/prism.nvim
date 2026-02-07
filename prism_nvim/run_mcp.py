@@ -3,8 +3,8 @@
 Wrapper script to run the MCP server with proper stdio handling.
 This ensures unbuffered I/O and clean startup.
 """
-import sys
 import os
+import sys
 
 # Force unbuffered stdout/stderr
 os.environ["PYTHONUNBUFFERED"] = "1"

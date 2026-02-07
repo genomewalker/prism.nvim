@@ -2,9 +2,9 @@
 """
 Debug wrapper that logs all MCP I/O to see what Claude Code sends.
 """
-import sys
 import os
 import subprocess
+import sys
 import threading
 import time
 

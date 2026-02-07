@@ -8,21 +8,21 @@ Usage:
     prism-nvim uninstall  # Remove everything
 """
 
-import click
 import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+
+import click
 
 # Rich for pretty output
 try:
+    from rich import print as rprint
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import print as rprint
 
     HAS_RICH = True
 except ImportError:
@@ -417,7 +417,7 @@ end
         permission = "mcp__prism-nvim__*"
         if permission not in settings["permissions"]["allow"]:
             settings["permissions"]["allow"].append(permission)
-            success(f"Added prism-nvim permissions")
+            success("Added prism-nvim permissions")
         else:
             info("Permissions already configured")
 
@@ -504,7 +504,7 @@ def start(nvim_socket: str, foreground: bool):
 
     The server connects to Neovim and exposes IDE control to Claude.
     """
-    info(f"Starting Prism MCP server...")
+    info("Starting Prism MCP server...")
     info(f"Neovim socket: {nvim_socket}")
 
     os.environ["NVIM"] = nvim_socket

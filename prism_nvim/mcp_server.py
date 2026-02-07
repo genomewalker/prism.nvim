@@ -7,12 +7,11 @@ to fully control a Neovim instance as an IDE.
 
 import asyncio
 import json
-import os
-import sys
-from dataclasses import dataclass, asdict
-from pathlib import Path
-from typing import Any, Optional, Callable
 import logging
+import sys
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Callable, Optional
 
 
 class BytesEncoder(json.JSONEncoder):
@@ -1961,7 +1960,7 @@ class PrismMCPServer:
         self.nvim.command(f"normal! {count}\\<C-o>")
         cursor = self.nvim.get_cursor()
         buf = self.nvim.get_current_buffer()
-        self._narrate(f"Jump back (Ctrl+O)")
+        self._narrate("Jump back (Ctrl+O)")
         return {
             "success": True,
             "path": buf.name,
@@ -1976,7 +1975,7 @@ class PrismMCPServer:
         self.nvim.command(f"normal! {count}\\<C-i>")
         cursor = self.nvim.get_cursor()
         buf = self.nvim.get_current_buffer()
-        self._narrate(f"Jump forward (Ctrl+I)")
+        self._narrate("Jump forward (Ctrl+I)")
         return {
             "success": True,
             "path": buf.name,
