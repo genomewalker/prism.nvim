@@ -10,10 +10,12 @@ import time
 
 LOG_FILE = "/tmp/prism-mcp-debug.log"
 
+
 def log(msg):
     with open(LOG_FILE, "a") as f:
         f.write(f"{time.strftime('%H:%M:%S.%f')} {msg}\n")
         f.flush()
+
 
 def main():
     log("=== DEBUG MCP WRAPPER STARTED ===")
@@ -76,6 +78,7 @@ def main():
     # Wait for process to finish
     proc.wait()
     log(f"Server exited with code {proc.returncode}")
+
 
 if __name__ == "__main__":
     main()

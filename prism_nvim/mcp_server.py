@@ -17,12 +17,14 @@ import logging
 
 class BytesEncoder(json.JSONEncoder):
     """Custom JSON encoder that handles bytes and dataclasses."""
+
     def default(self, obj):
         if isinstance(obj, bytes):
-            return obj.decode('utf-8', errors='replace')
-        if hasattr(obj, '__dataclass_fields__'):
+            return obj.decode("utf-8", errors="replace")
+        if hasattr(obj, "__dataclass_fields__"):
             return asdict(obj)
         return super().default(obj)
+
 
 from .nvim_client import NeovimClient
 
@@ -32,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Tool:
     """MCP Tool definition."""
+
     name: str
     description: str
     input_schema: dict
@@ -67,7 +70,7 @@ class PrismMCPServer:
         self.config = {
             "auto_save": False,  # Auto-save after edits
             "keep_focus": True,  # Return focus to terminal after opening files
-            "narrated": False,   # Explain vim commands as they happen
+            "narrated": False,  # Explain vim commands as they happen
         }
 
         # Bookmarks storage
@@ -90,17 +93,17 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to the file to open (absolute or relative to cwd)"
+                        "description": "Path to the file to open (absolute or relative to cwd)",
                     },
                     "keep_focus": {
                         "type": "boolean",
                         "description": "Return focus to terminal after opening (default: true)",
-                        "default": True
-                    }
+                        "default": True,
+                    },
                 },
-                "required": ["path"]
+                "required": ["path"],
             },
-            handler=self._handle_open_file
+            handler=self._handle_open_file,
         )
 
         self._register_tool(
@@ -111,11 +114,11 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Optional new path to save to (save as)"
+                        "description": "Optional new path to save to (save as)",
                     }
-                }
+                },
             },
-            handler=self._handle_save_file
+            handler=self._handle_save_file,
         )
 
         self._register_tool(
@@ -126,16 +129,16 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of file to close (current buffer if not specified)"
+                        "description": "Path of file to close (current buffer if not specified)",
                     },
                     "force": {
                         "type": "boolean",
                         "description": "Force close without saving changes",
-                        "default": False
-                    }
-                }
+                        "default": False,
+                    },
+                },
             },
-            handler=self._handle_close_file
+            handler=self._handle_close_file,
         )
 
         self._register_tool(
@@ -144,19 +147,16 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path for the new file"
-                    },
+                    "path": {"type": "string", "description": "Path for the new file"},
                     "content": {
                         "type": "string",
                         "description": "Initial content for the file",
-                        "default": ""
-                    }
+                        "default": "",
+                    },
                 },
-                "required": ["path"]
+                "required": ["path"],
             },
-            handler=self._handle_create_file
+            handler=self._handle_create_file,
         )
 
         # =====================================================================
@@ -171,11 +171,11 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of file to read (current buffer if not specified)"
+                        "description": "Path of file to read (current buffer if not specified)",
                     }
-                }
+                },
             },
-            handler=self._handle_get_buffer_content
+            handler=self._handle_get_buffer_content,
         )
 
         self._register_tool(
@@ -186,21 +186,21 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of file (current buffer if not specified)"
+                        "description": "Path of file (current buffer if not specified)",
                     },
                     "start_line": {
                         "type": "integer",
                         "description": "Start line (1-indexed)",
-                        "default": 1
+                        "default": 1,
                     },
                     "end_line": {
                         "type": "integer",
                         "description": "End line (inclusive, -1 for end of file)",
-                        "default": -1
-                    }
-                }
+                        "default": -1,
+                    },
+                },
             },
-            handler=self._handle_get_buffer_lines
+            handler=self._handle_get_buffer_lines,
         )
 
         self._register_tool(
@@ -209,23 +209,20 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "content": {
-                        "type": "string",
-                        "description": "New content for the buffer"
-                    },
+                    "content": {"type": "string", "description": "New content for the buffer"},
                     "path": {
                         "type": "string",
-                        "description": "Path of file (current buffer if not specified)"
+                        "description": "Path of file (current buffer if not specified)",
                     },
                     "auto_save": {
                         "type": "boolean",
                         "description": "Automatically save after edit (default: false)",
-                        "default": False
-                    }
+                        "default": False,
+                    },
                 },
-                "required": ["content"]
+                "required": ["content"],
             },
-            handler=self._handle_set_buffer_content
+            handler=self._handle_set_buffer_content,
         )
 
         self._register_tool(
@@ -236,30 +233,30 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line to replace (1-indexed)"
+                        "description": "Start line to replace (1-indexed)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line to replace (inclusive)"
+                        "description": "End line to replace (inclusive)",
                     },
                     "new_lines": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "New lines to insert"
+                        "description": "New lines to insert",
                     },
                     "path": {
                         "type": "string",
-                        "description": "Path of file (current buffer if not specified)"
+                        "description": "Path of file (current buffer if not specified)",
                     },
                     "auto_save": {
                         "type": "boolean",
                         "description": "Automatically save after edit (default: false)",
-                        "default": False
-                    }
+                        "default": False,
+                    },
                 },
-                "required": ["start_line", "end_line", "new_lines"]
+                "required": ["start_line", "end_line", "new_lines"],
             },
-            handler=self._handle_edit_buffer
+            handler=self._handle_edit_buffer,
         )
 
         self._register_tool(
@@ -268,26 +265,17 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {
-                        "type": "integer",
-                        "description": "Line number (1-indexed)"
-                    },
-                    "column": {
-                        "type": "integer",
-                        "description": "Column number (0-indexed)"
-                    },
-                    "text": {
-                        "type": "string",
-                        "description": "Text to insert"
-                    },
+                    "line": {"type": "integer", "description": "Line number (1-indexed)"},
+                    "column": {"type": "integer", "description": "Column number (0-indexed)"},
+                    "text": {"type": "string", "description": "Text to insert"},
                     "path": {
                         "type": "string",
-                        "description": "Path of file (current buffer if not specified)"
-                    }
+                        "description": "Path of file (current buffer if not specified)",
+                    },
                 },
-                "required": ["line", "column", "text"]
+                "required": ["line", "column", "text"],
             },
-            handler=self._handle_insert_text
+            handler=self._handle_insert_text,
         )
 
         # =====================================================================
@@ -297,31 +285,22 @@ class PrismMCPServer:
         self._register_tool(
             name="get_open_files",
             description="Get a list of all open files/buffers in Neovim.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_open_files
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_open_files,
         )
 
         self._register_tool(
             name="get_current_file",
             description="Get information about the currently focused file/buffer.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_current_file
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_current_file,
         )
 
         self._register_tool(
             name="get_cursor_position",
             description="Get the current cursor position.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_cursor_position
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_cursor_position,
         )
 
         self._register_tool(
@@ -330,28 +309,19 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {
-                        "type": "integer",
-                        "description": "Line number (1-indexed)"
-                    },
-                    "column": {
-                        "type": "integer",
-                        "description": "Column number (0-indexed)"
-                    }
+                    "line": {"type": "integer", "description": "Line number (1-indexed)"},
+                    "column": {"type": "integer", "description": "Column number (0-indexed)"},
                 },
-                "required": ["line", "column"]
+                "required": ["line", "column"],
             },
-            handler=self._handle_set_cursor_position
+            handler=self._handle_set_cursor_position,
         )
 
         self._register_tool(
             name="get_selection",
             description="Get the currently selected text (if in visual mode).",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_selection
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_selection,
         )
 
         # =====================================================================
@@ -367,15 +337,12 @@ class PrismMCPServer:
                     "vertical": {
                         "type": "boolean",
                         "description": "Create vertical split (side by side)",
-                        "default": False
+                        "default": False,
                     },
-                    "path": {
-                        "type": "string",
-                        "description": "File to open in new split"
-                    }
-                }
+                    "path": {"type": "string", "description": "File to open in new split"},
+                },
             },
-            handler=self._handle_split_window
+            handler=self._handle_split_window,
         )
 
         self._register_tool(
@@ -384,24 +351,17 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "force": {
-                        "type": "boolean",
-                        "description": "Force close",
-                        "default": False
-                    }
-                }
+                    "force": {"type": "boolean", "description": "Force close", "default": False}
+                },
             },
-            handler=self._handle_close_window
+            handler=self._handle_close_window,
         )
 
         self._register_tool(
             name="get_windows",
             description="Get information about all open windows.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_windows
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_windows,
         )
 
         # =====================================================================
@@ -416,41 +376,32 @@ class PrismMCPServer:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path of file (current buffer if not specified)"
+                        "description": "Path of file (current buffer if not specified)",
                     }
-                }
+                },
             },
-            handler=self._handle_get_diagnostics
+            handler=self._handle_get_diagnostics,
         )
 
         self._register_tool(
             name="goto_definition",
             description="Go to the definition of the symbol under cursor.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_goto_definition
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_goto_definition,
         )
 
         self._register_tool(
             name="get_hover_info",
             description="Get hover information (documentation) for symbol under cursor.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_hover_info
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_hover_info,
         )
 
         self._register_tool(
             name="format_file",
             description="Format the current file using LSP formatter.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_format_file
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_format_file,
         )
 
         # =====================================================================
@@ -463,14 +414,11 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Search pattern (Lua pattern)"
-                    }
+                    "pattern": {"type": "string", "description": "Search pattern (Lua pattern)"}
                 },
-                "required": ["pattern"]
+                "required": ["pattern"],
             },
-            handler=self._handle_search_in_file
+            handler=self._handle_search_in_file,
         )
 
         self._register_tool(
@@ -479,23 +427,17 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Search pattern"
-                    },
-                    "replacement": {
-                        "type": "string",
-                        "description": "Replacement text"
-                    },
+                    "pattern": {"type": "string", "description": "Search pattern"},
+                    "replacement": {"type": "string", "description": "Replacement text"},
                     "flags": {
                         "type": "string",
                         "description": "Flags: g (global), i (ignore case), c (confirm)",
-                        "default": "g"
-                    }
+                        "default": "g",
+                    },
                 },
-                "required": ["pattern", "replacement"]
+                "required": ["pattern", "replacement"],
             },
-            handler=self._handle_search_and_replace
+            handler=self._handle_search_and_replace,
         )
 
         # =====================================================================
@@ -505,11 +447,8 @@ class PrismMCPServer:
         self._register_tool(
             name="git_status",
             description="Get git status for the current project.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_git_status
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_git_status,
         )
 
         self._register_tool(
@@ -521,11 +460,11 @@ class PrismMCPServer:
                     "staged": {
                         "type": "boolean",
                         "description": "Show staged changes only",
-                        "default": False
+                        "default": False,
                     }
-                }
+                },
             },
-            handler=self._handle_git_diff
+            handler=self._handle_git_diff,
         )
 
         # =====================================================================
@@ -538,13 +477,10 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": "Command to run in terminal"
-                    }
-                }
+                    "command": {"type": "string", "description": "Command to run in terminal"}
+                },
             },
-            handler=self._handle_open_terminal
+            handler=self._handle_open_terminal,
         )
 
         self._register_tool(
@@ -553,14 +489,11 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": "Neovim command to execute"
-                    }
+                    "command": {"type": "string", "description": "Neovim command to execute"}
                 },
-                "required": ["command"]
+                "required": ["command"],
             },
-            handler=self._handle_run_command
+            handler=self._handle_run_command,
         )
 
         # =====================================================================
@@ -573,20 +506,17 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "message": {
-                        "type": "string",
-                        "description": "Message to display"
-                    },
+                    "message": {"type": "string", "description": "Message to display"},
                     "level": {
                         "type": "string",
                         "enum": ["info", "warn", "error"],
                         "description": "Notification level",
-                        "default": "info"
-                    }
+                        "default": "info",
+                    },
                 },
-                "required": ["message"]
+                "required": ["message"],
             },
-            handler=self._handle_notify
+            handler=self._handle_notify,
         )
 
         # =====================================================================
@@ -596,11 +526,8 @@ class PrismMCPServer:
         self._register_tool(
             name="get_config",
             description="Get current prism-nvim configuration.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_config
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_config,
         )
 
         self._register_tool(
@@ -611,19 +538,19 @@ class PrismMCPServer:
                 "properties": {
                     "auto_save": {
                         "type": "boolean",
-                        "description": "Auto-save after all buffer edits (default: false)"
+                        "description": "Auto-save after all buffer edits (default: false)",
                     },
                     "keep_focus": {
                         "type": "boolean",
-                        "description": "Return focus to terminal after opening files (default: true)"
+                        "description": "Return focus to terminal after opening files (default: true)",
                     },
                     "narrated": {
                         "type": "boolean",
-                        "description": "Show vim commands as they execute - great for learning vim! (default: false)"
-                    }
-                }
+                        "description": "Show vim commands as they execute - great for learning vim! (default: false)",
+                    },
+                },
             },
-            handler=self._handle_set_config
+            handler=self._handle_set_config,
         )
 
         self._register_tool(
@@ -632,18 +559,15 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to the file to diff"
-                    },
+                    "path": {"type": "string", "description": "Path to the file to diff"},
                     "new_content": {
                         "type": "string",
-                        "description": "Proposed new content for the file"
-                    }
+                        "description": "Proposed new content for the file",
+                    },
                 },
-                "required": ["path", "new_content"]
+                "required": ["path", "new_content"],
             },
-            handler=self._handle_diff_preview
+            handler=self._handle_diff_preview,
         )
 
         # =====================================================================
@@ -659,11 +583,11 @@ class PrismMCPServer:
                     "count": {
                         "type": "integer",
                         "description": "Number of changes to undo (default: 1)",
-                        "default": 1
+                        "default": 1,
                     }
-                }
+                },
             },
-            handler=self._handle_undo
+            handler=self._handle_undo,
         )
 
         self._register_tool(
@@ -675,11 +599,11 @@ class PrismMCPServer:
                     "count": {
                         "type": "integer",
                         "description": "Number of changes to redo (default: 1)",
-                        "default": 1
+                        "default": 1,
                     }
-                }
+                },
             },
-            handler=self._handle_redo
+            handler=self._handle_redo,
         )
 
         # =====================================================================
@@ -689,11 +613,8 @@ class PrismMCPServer:
         self._register_tool(
             name="get_references",
             description="Find all references to the symbol under cursor.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_get_references
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_get_references,
         )
 
         self._register_tool(
@@ -702,14 +623,11 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "new_name": {
-                        "type": "string",
-                        "description": "New name for the symbol"
-                    }
+                    "new_name": {"type": "string", "description": "New name for the symbol"}
                 },
-                "required": ["new_name"]
+                "required": ["new_name"],
             },
-            handler=self._handle_rename_symbol
+            handler=self._handle_rename_symbol,
         )
 
         self._register_tool(
@@ -721,11 +639,11 @@ class PrismMCPServer:
                     "apply_first": {
                         "type": "boolean",
                         "description": "Automatically apply the first available action",
-                        "default": False
+                        "default": False,
                     }
-                }
+                },
             },
-            handler=self._handle_code_actions
+            handler=self._handle_code_actions,
         )
 
         # =====================================================================
@@ -740,16 +658,16 @@ class PrismMCPServer:
                 "properties": {
                     "line": {
                         "type": "integer",
-                        "description": "Line number to fold at (current line if not specified)"
+                        "description": "Line number to fold at (current line if not specified)",
                     },
                     "all": {
                         "type": "boolean",
                         "description": "Fold all foldable regions in the buffer",
-                        "default": False
-                    }
-                }
+                        "default": False,
+                    },
+                },
             },
-            handler=self._handle_fold
+            handler=self._handle_fold,
         )
 
         self._register_tool(
@@ -760,16 +678,16 @@ class PrismMCPServer:
                 "properties": {
                     "line": {
                         "type": "integer",
-                        "description": "Line number to unfold at (current line if not specified)"
+                        "description": "Line number to unfold at (current line if not specified)",
                     },
                     "all": {
                         "type": "boolean",
                         "description": "Unfold all regions in the buffer",
-                        "default": False
-                    }
-                }
+                        "default": False,
+                    },
+                },
             },
-            handler=self._handle_unfold
+            handler=self._handle_unfold,
         )
 
         # =====================================================================
@@ -782,18 +700,15 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name for the bookmark"
-                    },
+                    "name": {"type": "string", "description": "Name for the bookmark"},
                     "description": {
                         "type": "string",
-                        "description": "Optional description of what's at this location"
-                    }
+                        "description": "Optional description of what's at this location",
+                    },
                 },
-                "required": ["name"]
+                "required": ["name"],
             },
-            handler=self._handle_bookmark
+            handler=self._handle_bookmark,
         )
 
         self._register_tool(
@@ -802,24 +717,18 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name of the bookmark to jump to"
-                    }
+                    "name": {"type": "string", "description": "Name of the bookmark to jump to"}
                 },
-                "required": ["name"]
+                "required": ["name"],
             },
-            handler=self._handle_goto_bookmark
+            handler=self._handle_goto_bookmark,
         )
 
         self._register_tool(
             name="list_bookmarks",
             description="List all current bookmarks.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_list_bookmarks
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_list_bookmarks,
         )
 
         self._register_tool(
@@ -828,14 +737,11 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name of the bookmark to delete"
-                    }
+                    "name": {"type": "string", "description": "Name of the bookmark to delete"}
                 },
-                "required": ["name"]
+                "required": ["name"],
             },
-            handler=self._handle_delete_bookmark
+            handler=self._handle_delete_bookmark,
         )
 
         # =====================================================================
@@ -850,15 +756,15 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (1-indexed, current line if not specified)"
+                        "description": "Start line (1-indexed, current line if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (inclusive, same as start if not specified)"
-                    }
-                }
+                        "description": "End line (inclusive, same as start if not specified)",
+                    },
+                },
             },
-            handler=self._handle_comment
+            handler=self._handle_comment,
         )
 
         self._register_tool(
@@ -869,16 +775,16 @@ class PrismMCPServer:
                 "properties": {
                     "line": {
                         "type": "integer",
-                        "description": "Line to duplicate (current line if not specified)"
+                        "description": "Line to duplicate (current line if not specified)",
                     },
                     "count": {
                         "type": "integer",
                         "description": "Number of copies (default: 1)",
-                        "default": 1
-                    }
-                }
+                        "default": 1,
+                    },
+                },
             },
-            handler=self._handle_duplicate_line
+            handler=self._handle_duplicate_line,
         )
 
         self._register_tool(
@@ -890,20 +796,20 @@ class PrismMCPServer:
                     "direction": {
                         "type": "string",
                         "enum": ["up", "down"],
-                        "description": "Direction to move"
+                        "description": "Direction to move",
                     },
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (current if not specified)"
+                        "description": "Start line (current if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (same as start if not specified)"
-                    }
+                        "description": "End line (same as start if not specified)",
+                    },
                 },
-                "required": ["direction"]
+                "required": ["direction"],
             },
-            handler=self._handle_move_line
+            handler=self._handle_move_line,
         )
 
         self._register_tool(
@@ -914,15 +820,15 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (current if not specified)"
+                        "description": "Start line (current if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (same as start if not specified)"
-                    }
-                }
+                        "description": "End line (same as start if not specified)",
+                    },
+                },
             },
-            handler=self._handle_delete_line
+            handler=self._handle_delete_line,
         )
 
         self._register_tool(
@@ -934,11 +840,11 @@ class PrismMCPServer:
                     "count": {
                         "type": "integer",
                         "description": "Number of lines to join (default: 2)",
-                        "default": 2
+                        "default": 2,
                     }
-                }
+                },
             },
-            handler=self._handle_join_lines
+            handler=self._handle_join_lines,
         )
 
         # =====================================================================
@@ -948,11 +854,8 @@ class PrismMCPServer:
         self._register_tool(
             name="select_word",
             description="Select the word under the cursor.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_select_word
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_select_word,
         )
 
         self._register_tool(
@@ -963,15 +866,15 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (current if not specified)"
+                        "description": "Start line (current if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (same as start if not specified)"
-                    }
-                }
+                        "description": "End line (same as start if not specified)",
+                    },
+                },
             },
-            handler=self._handle_select_line
+            handler=self._handle_select_line,
         )
 
         self._register_tool(
@@ -984,26 +887,23 @@ class PrismMCPServer:
                         "type": "string",
                         "enum": ["paragraph", "brace", "paren", "bracket"],
                         "description": "Block type to select",
-                        "default": "paragraph"
+                        "default": "paragraph",
                     },
                     "around": {
                         "type": "boolean",
                         "description": "Include delimiters (default: false)",
-                        "default": False
-                    }
-                }
+                        "default": False,
+                    },
+                },
             },
-            handler=self._handle_select_block
+            handler=self._handle_select_block,
         )
 
         self._register_tool(
             name="select_all",
             description="Select the entire buffer content.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_select_all
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_select_all,
         )
 
         # =====================================================================
@@ -1018,20 +918,20 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (current if not specified)"
+                        "description": "Start line (current if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (same as start if not specified)"
+                        "description": "End line (same as start if not specified)",
                     },
                     "count": {
                         "type": "integer",
                         "description": "Indent levels (default: 1)",
-                        "default": 1
-                    }
-                }
+                        "default": 1,
+                    },
+                },
             },
-            handler=self._handle_indent
+            handler=self._handle_indent,
         )
 
         self._register_tool(
@@ -1042,20 +942,20 @@ class PrismMCPServer:
                 "properties": {
                     "start_line": {
                         "type": "integer",
-                        "description": "Start line (current if not specified)"
+                        "description": "Start line (current if not specified)",
                     },
                     "end_line": {
                         "type": "integer",
-                        "description": "End line (same as start if not specified)"
+                        "description": "End line (same as start if not specified)",
                     },
                     "count": {
                         "type": "integer",
                         "description": "Dedent levels (default: 1)",
-                        "default": 1
-                    }
-                }
+                        "default": 1,
+                    },
+                },
             },
-            handler=self._handle_dedent
+            handler=self._handle_dedent,
         )
 
         # =====================================================================
@@ -1068,24 +968,18 @@ class PrismMCPServer:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {
-                        "type": "integer",
-                        "description": "Line number to jump to"
-                    }
+                    "line": {"type": "integer", "description": "Line number to jump to"}
                 },
-                "required": ["line"]
+                "required": ["line"],
             },
-            handler=self._handle_goto_line
+            handler=self._handle_goto_line,
         )
 
         self._register_tool(
             name="goto_matching",
             description="Jump to the matching bracket/paren/brace.",
-            input_schema={
-                "type": "object",
-                "properties": {}
-            },
-            handler=self._handle_goto_matching
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_goto_matching,
         )
 
         self._register_tool(
@@ -1098,11 +992,11 @@ class PrismMCPServer:
                         "type": "string",
                         "enum": ["error", "warning", "info", "hint"],
                         "description": "Minimum severity (default: error)",
-                        "default": "error"
+                        "default": "error",
                     }
-                }
+                },
             },
-            handler=self._handle_next_error
+            handler=self._handle_next_error,
         )
 
         self._register_tool(
@@ -1115,11 +1009,11 @@ class PrismMCPServer:
                         "type": "string",
                         "enum": ["error", "warning", "info", "hint"],
                         "description": "Minimum severity (default: error)",
-                        "default": "error"
+                        "default": "error",
                     }
-                }
+                },
             },
-            handler=self._handle_prev_error
+            handler=self._handle_prev_error,
         )
 
         self._register_tool(
@@ -1131,11 +1025,11 @@ class PrismMCPServer:
                     "count": {
                         "type": "integer",
                         "description": "Positions to jump back (default: 1)",
-                        "default": 1
+                        "default": 1,
                     }
-                }
+                },
             },
-            handler=self._handle_jump_back
+            handler=self._handle_jump_back,
         )
 
         self._register_tool(
@@ -1147,11 +1041,11 @@ class PrismMCPServer:
                     "count": {
                         "type": "integer",
                         "description": "Positions to jump forward (default: 1)",
-                        "default": 1
+                        "default": 1,
                     }
-                }
+                },
             },
-            handler=self._handle_jump_forward
+            handler=self._handle_jump_forward,
         )
 
         # =====================================================================
@@ -1166,12 +1060,12 @@ class PrismMCPServer:
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "Vim command to explain (e.g. 'dd', 'ciw', ':wq')"
+                        "description": "Vim command to explain (e.g. 'dd', 'ciw', ':wq')",
                     }
                 },
-                "required": ["command"]
+                "required": ["command"],
             },
-            handler=self._handle_explain_command
+            handler=self._handle_explain_command,
         )
 
         self._register_tool(
@@ -1184,11 +1078,11 @@ class PrismMCPServer:
                         "type": "string",
                         "enum": ["movement", "editing", "search", "visual", "files", "all"],
                         "description": "Category to show (default: all)",
-                        "default": "all"
+                        "default": "all",
                     }
-                }
+                },
             },
-            handler=self._handle_vim_cheatsheet
+            handler=self._handle_vim_cheatsheet,
         )
 
         self._register_tool(
@@ -1199,38 +1093,25 @@ class PrismMCPServer:
                 "properties": {
                     "task": {
                         "type": "string",
-                        "description": "What you want to do (e.g. 'delete inside quotes')"
+                        "description": "What you want to do (e.g. 'delete inside quotes')",
                     }
                 },
-                "required": ["task"]
+                "required": ["task"],
             },
-            handler=self._handle_suggest_command
+            handler=self._handle_suggest_command,
         )
 
-    def _register_tool(
-        self,
-        name: str,
-        description: str,
-        input_schema: dict,
-        handler: Callable
-    ):
+    def _register_tool(self, name: str, description: str, input_schema: dict, handler: Callable):
         """Register an MCP tool."""
         self.tools[name] = Tool(
-            name=name,
-            description=description,
-            input_schema=input_schema,
-            handler=handler
+            name=name, description=description, input_schema=input_schema, handler=handler
         )
 
     # =========================================================================
     # Tool Handlers
     # =========================================================================
 
-    def _handle_open_file(
-        self,
-        path: str,
-        keep_focus: Optional[bool] = None
-    ) -> dict:
+    def _handle_open_file(self, path: str, keep_focus: Optional[bool] = None) -> dict:
         """Open a file in the editor area (not the terminal)."""
         if keep_focus is None:
             keep_focus = self.config.get("keep_focus", True)
@@ -1239,12 +1120,7 @@ class PrismMCPServer:
 
         buf = self.nvim.open_file(path, keep_focus=keep_focus)
         self._narrate(f"Opening file (:e {path})")
-        return {
-            "success": True,
-            "buffer_id": buf.id,
-            "path": buf.name,
-            "filetype": buf.filetype
-        }
+        return {"success": True, "buffer_id": buf.id, "path": buf.name, "filetype": buf.filetype}
 
     def _handle_save_file(self, path: Optional[str] = None) -> dict:
         """Save current file."""
@@ -1252,11 +1128,7 @@ class PrismMCPServer:
         self._narrate("Saving file (:w)")
         return {"success": True}
 
-    def _handle_close_file(
-        self,
-        path: Optional[str] = None,
-        force: bool = False
-    ) -> dict:
+    def _handle_close_file(self, path: Optional[str] = None, force: bool = False) -> dict:
         """Close a file."""
         cmd = ":bd!" if force else ":bd"
         if path:
@@ -1280,11 +1152,7 @@ class PrismMCPServer:
         Path(path).write_text(content)
         # Open in editor
         buf = self.nvim.open_file(path)
-        return {
-            "success": True,
-            "path": path,
-            "buffer_id": buf.id
-        }
+        return {"success": True, "path": path, "buffer_id": buf.id}
 
     def _handle_get_buffer_content(self, path: Optional[str] = None) -> dict:
         """Get buffer content."""
@@ -1299,10 +1167,7 @@ class PrismMCPServer:
         return {"content": content}
 
     def _handle_get_buffer_lines(
-        self,
-        path: Optional[str] = None,
-        start_line: int = 1,
-        end_line: int = -1
+        self, path: Optional[str] = None, start_line: int = 1, end_line: int = -1
     ) -> dict:
         """Get specific lines."""
         # Ensure integer types (JSON might send strings)
@@ -1324,10 +1189,7 @@ class PrismMCPServer:
         return {"lines": lines, "start_line": start_line, "count": len(lines)}
 
     def _handle_set_buffer_content(
-        self,
-        content: str,
-        path: Optional[str] = None,
-        auto_save: Optional[bool] = None
+        self, content: str, path: Optional[str] = None, auto_save: Optional[bool] = None
     ) -> dict:
         """Set buffer content."""
         # Use global config if not explicitly passed
@@ -1360,7 +1222,7 @@ class PrismMCPServer:
         end_line: int,
         new_lines: list[str],
         path: Optional[str] = None,
-        auto_save: Optional[bool] = None
+        auto_save: Optional[bool] = None,
     ) -> dict:
         """Edit specific lines."""
         # Ensure integer types (JSON might send strings)
@@ -1402,11 +1264,7 @@ class PrismMCPServer:
         return {"success": True, "lines_changed": len(new_lines), "saved": auto_save}
 
     def _handle_insert_text(
-        self,
-        line: int,
-        column: int,
-        text: str,
-        path: Optional[str] = None
+        self, line: int, column: int, text: str, path: Optional[str] = None
     ) -> dict:
         """Insert text at position."""
         # Ensure integer types
@@ -1429,12 +1287,7 @@ class PrismMCPServer:
         buffers = self.nvim.get_buffers()
         return {
             "files": [
-                {
-                    "id": buf.id,
-                    "path": buf.name,
-                    "filetype": buf.filetype,
-                    "modified": buf.modified
-                }
+                {"id": buf.id, "path": buf.name, "filetype": buf.filetype, "modified": buf.modified}
                 for buf in buffers
             ]
         }
@@ -1448,7 +1301,7 @@ class PrismMCPServer:
             "path": buf.name,
             "filetype": buf.filetype,
             "modified": buf.modified,
-            "cursor": {"line": cursor[0], "column": cursor[1]}
+            "cursor": {"line": cursor[0], "column": cursor[1]},
         }
 
     def _handle_get_cursor_position(self) -> dict:
@@ -1474,22 +1327,14 @@ class PrismMCPServer:
                 "start_column": sel.start_col,
                 "end_line": sel.end_line,
                 "end_column": sel.end_col,
-                "mode": sel.mode
+                "mode": sel.mode,
             }
         return {"text": None, "message": "No selection active"}
 
-    def _handle_split_window(
-        self,
-        vertical: bool = False,
-        path: Optional[str] = None
-    ) -> dict:
+    def _handle_split_window(self, vertical: bool = False, path: Optional[str] = None) -> dict:
         """Create window split."""
         win = self.nvim.split(vertical, path)
-        return {
-            "success": True,
-            "window_id": win.id,
-            "buffer_id": win.buffer_id
-        }
+        return {"success": True, "window_id": win.id, "buffer_id": win.buffer_id}
 
     def _handle_close_window(self, force: bool = False) -> dict:
         """Close current window."""
@@ -1506,7 +1351,7 @@ class PrismMCPServer:
                     "buffer_id": win.buffer_id,
                     "cursor": {"line": win.cursor[0], "column": win.cursor[1]},
                     "width": win.width,
-                    "height": win.height
+                    "height": win.height,
                 }
                 for win in windows
             ]
@@ -1531,12 +1376,7 @@ class PrismMCPServer:
         if success:
             buf = self.nvim.get_current_buffer()
             cursor = self.nvim.get_cursor()
-            return {
-                "success": True,
-                "path": buf.name,
-                "line": cursor[0],
-                "column": cursor[1]
-            }
+            return {"success": True, "path": buf.name, "line": cursor[0], "column": cursor[1]}
         return {"success": False, "error": "No definition found"}
 
     def _handle_get_hover_info(self) -> dict:
@@ -1552,20 +1392,9 @@ class PrismMCPServer:
     def _handle_search_in_file(self, pattern: str) -> dict:
         """Search in file."""
         results = self.nvim.search(pattern)
-        return {
-            "matches": [
-                {"line": r[0], "column": r[1]}
-                for r in results
-            ],
-            "count": len(results)
-        }
+        return {"matches": [{"line": r[0], "column": r[1]} for r in results], "count": len(results)}
 
-    def _handle_search_and_replace(
-        self,
-        pattern: str,
-        replacement: str,
-        flags: str = "g"
-    ) -> dict:
+    def _handle_search_and_replace(self, pattern: str, replacement: str, flags: str = "g") -> dict:
         """Search and replace."""
         count = self.nvim.replace(pattern, replacement, flags)
         self._narrate(f"Search/replace (:%s/{pattern}/{replacement}/{flags})")
@@ -1594,9 +1423,23 @@ class PrismMCPServer:
         try:
             # Commands that could replace the current buffer (terminal)
             buffer_changing_commands = [
-                'edit', 'e ', 'e!', 'buffer', 'b ', 'bnext', 'bprev',
-                'split', 'sp ', 'vsplit', 'vs ', 'new', 'vnew', 'enew',
-                'tabnew', 'tabedit', 'tabe '
+                "edit",
+                "e ",
+                "e!",
+                "buffer",
+                "b ",
+                "bnext",
+                "bprev",
+                "split",
+                "sp ",
+                "vsplit",
+                "vs ",
+                "new",
+                "vnew",
+                "enew",
+                "tabnew",
+                "tabedit",
+                "tabe ",
             ]
 
             cmd_lower = command.lower().strip()
@@ -1616,7 +1459,9 @@ class PrismMCPServer:
                     # Find editor window
                     for win in self.nvim.call("nvim_list_wins"):
                         win_buf = self.nvim.call("nvim_win_get_buf", win)
-                        win_buftype = self.nvim.call("nvim_get_option_value", "buftype", {"buf": win_buf})
+                        win_buftype = self.nvim.call(
+                            "nvim_get_option_value", "buftype", {"buf": win_buf}
+                        )
                         if win_buftype != "terminal":
                             self.nvim.call("nvim_set_current_win", win)
                             break
@@ -1650,9 +1495,10 @@ class PrismMCPServer:
         self,
         auto_save: Optional[bool] = None,
         keep_focus: Optional[bool] = None,
-        narrated: Optional[bool] = None
+        narrated: Optional[bool] = None,
     ) -> dict:
         """Set configuration options."""
+
         # Handle string booleans from JSON
         def parse_bool(val):
             if val is None:
@@ -1679,11 +1525,7 @@ class PrismMCPServer:
 
         return {"success": True, "config": self.config}
 
-    def _handle_diff_preview(
-        self,
-        path: str,
-        new_content: str
-    ) -> dict:
+    def _handle_diff_preview(self, path: str, new_content: str) -> dict:
         """Show diff preview before applying changes. Opens a diff view in editor area."""
         # Remember current window (terminal)
         current_win = self.nvim.call("nvim_get_current_win")
@@ -1720,7 +1562,7 @@ class PrismMCPServer:
 
         return {
             "success": True,
-            "message": "Diff preview opened in editor area. Use :diffoff and :bd to close when done."
+            "message": "Diff preview opened in editor area. Use :diffoff and :bd to close when done.",
         }
 
     def _handle_undo(self, count: int = 1) -> dict:
@@ -1812,16 +1654,11 @@ class PrismMCPServer:
             "path": buf.name,
             "line": cursor[0],
             "column": cursor[1],
-            "description": description
+            "description": description,
         }
 
         self._narrate(f"Bookmark '{name}' created (like :mark but named)")
-        return {
-            "success": True,
-            "name": name,
-            "path": buf.name,
-            "line": cursor[0]
-        }
+        return {"success": True, "name": name, "path": buf.name, "line": cursor[0]}
 
     def _handle_goto_bookmark(self, name: str) -> dict:
         """Jump to a bookmark."""
@@ -1833,12 +1670,7 @@ class PrismMCPServer:
         self.nvim.set_cursor(bm["line"], bm["column"])
 
         self._narrate(f"Jumping to bookmark '{name}' (like `a but named)")
-        return {
-            "success": True,
-            "name": name,
-            "path": bm["path"],
-            "line": bm["line"]
-        }
+        return {"success": True, "name": name, "path": bm["path"], "line": bm["line"]}
 
     def _handle_list_bookmarks(self) -> dict:
         """List all bookmarks."""
@@ -1857,9 +1689,7 @@ class PrismMCPServer:
     # =========================================================================
 
     def _handle_comment(
-        self,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None
+        self, start_line: Optional[int] = None, end_line: Optional[int] = None
     ) -> dict:
         """Toggle comment on line(s)."""
         try:
@@ -1883,11 +1713,7 @@ class PrismMCPServer:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _handle_duplicate_line(
-        self,
-        line: Optional[int] = None,
-        count: int = 1
-    ) -> dict:
+    def _handle_duplicate_line(self, line: Optional[int] = None, count: int = 1) -> dict:
         """Duplicate a line below."""
         count = int(count) if count else 1
 
@@ -1904,10 +1730,7 @@ class PrismMCPServer:
         return {"success": True, "copies": count, "vim_cmd": vim_cmd}
 
     def _handle_move_line(
-        self,
-        direction: str,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None
+        self, direction: str, start_line: Optional[int] = None, end_line: Optional[int] = None
     ) -> dict:
         """Move line(s) up or down."""
         try:
@@ -1934,9 +1757,7 @@ class PrismMCPServer:
             return {"success": False, "error": str(e)}
 
     def _handle_delete_line(
-        self,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None
+        self, start_line: Optional[int] = None, end_line: Optional[int] = None
     ) -> dict:
         """Delete line(s)."""
         if start_line is not None and end_line is not None:
@@ -1977,9 +1798,7 @@ class PrismMCPServer:
         return {"success": True, "word": word or "", "vim_cmd": "viw"}
 
     def _handle_select_line(
-        self,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None
+        self, start_line: Optional[int] = None, end_line: Optional[int] = None
     ) -> dict:
         """Select entire line(s)."""
         if start_line is not None and end_line is not None:
@@ -2000,11 +1819,7 @@ class PrismMCPServer:
         self._narrate(f"Select {count} line(s) (V)")
         return {"success": True, "lines": count, "vim_cmd": "V"}
 
-    def _handle_select_block(
-        self,
-        type: str = "paragraph",
-        around: bool = False
-    ) -> dict:
+    def _handle_select_block(self, type: str = "paragraph", around: bool = False) -> dict:
         """Select a code block."""
         modifier = "a" if around else "i"
         block_map = {
@@ -2036,10 +1851,7 @@ class PrismMCPServer:
     # =========================================================================
 
     def _handle_indent(
-        self,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None,
-        count: int = 1
+        self, start_line: Optional[int] = None, end_line: Optional[int] = None, count: int = 1
     ) -> dict:
         """Increase indentation."""
         count = int(count) if count else 1
@@ -2060,10 +1872,7 @@ class PrismMCPServer:
         return {"success": True, "lines": lines, "levels": count, "vim_cmd": vim_cmd}
 
     def _handle_dedent(
-        self,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None,
-        count: int = 1
+        self, start_line: Optional[int] = None, end_line: Optional[int] = None, count: int = 1
     ) -> dict:
         """Decrease indentation."""
         count = int(count) if count else 1
@@ -2107,7 +1916,7 @@ class PrismMCPServer:
             "success": moved,
             "from": {"line": before[0], "column": before[1]},
             "to": {"line": after[0], "column": after[1]},
-            "vim_cmd": "%"
+            "vim_cmd": "%",
         }
 
     def _handle_next_error(self, severity: str = "error") -> dict:
@@ -2115,20 +1924,36 @@ class PrismMCPServer:
         severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
         vim_severity = severity_map.get(severity, "ERROR")
 
-        self.nvim.command(f"lua vim.diagnostic.goto_next({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})")
+        self.nvim.command(
+            f"lua vim.diagnostic.goto_next({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})"
+        )
         cursor = self.nvim.get_cursor()
         self._narrate(f"Jump to next {severity} (vim.diagnostic.goto_next())")
-        return {"success": True, "line": cursor[0], "column": cursor[1], "severity": severity, "vim_cmd": "]d"}
+        return {
+            "success": True,
+            "line": cursor[0],
+            "column": cursor[1],
+            "severity": severity,
+            "vim_cmd": "]d",
+        }
 
     def _handle_prev_error(self, severity: str = "error") -> dict:
         """Jump to previous diagnostic."""
         severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
         vim_severity = severity_map.get(severity, "ERROR")
 
-        self.nvim.command(f"lua vim.diagnostic.goto_prev({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})")
+        self.nvim.command(
+            f"lua vim.diagnostic.goto_prev({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})"
+        )
         cursor = self.nvim.get_cursor()
         self._narrate(f"Jump to previous {severity} (vim.diagnostic.goto_prev())")
-        return {"success": True, "line": cursor[0], "column": cursor[1], "severity": severity, "vim_cmd": "[d"}
+        return {
+            "success": True,
+            "line": cursor[0],
+            "column": cursor[1],
+            "severity": severity,
+            "vim_cmd": "[d",
+        }
 
     def _handle_jump_back(self, count: int = 1) -> dict:
         """Jump back in jump list."""
@@ -2137,7 +1962,13 @@ class PrismMCPServer:
         cursor = self.nvim.get_cursor()
         buf = self.nvim.get_current_buffer()
         self._narrate(f"Jump back (Ctrl+O)")
-        return {"success": True, "path": buf.name, "line": cursor[0], "column": cursor[1], "vim_cmd": "Ctrl+O"}
+        return {
+            "success": True,
+            "path": buf.name,
+            "line": cursor[0],
+            "column": cursor[1],
+            "vim_cmd": "Ctrl+O",
+        }
 
     def _handle_jump_forward(self, count: int = 1) -> dict:
         """Jump forward in jump list."""
@@ -2146,7 +1977,13 @@ class PrismMCPServer:
         cursor = self.nvim.get_cursor()
         buf = self.nvim.get_current_buffer()
         self._narrate(f"Jump forward (Ctrl+I)")
-        return {"success": True, "path": buf.name, "line": cursor[0], "column": cursor[1], "vim_cmd": "Ctrl+I"}
+        return {
+            "success": True,
+            "path": buf.name,
+            "line": cursor[0],
+            "column": cursor[1],
+            "vim_cmd": "Ctrl+I",
+        }
 
     # =========================================================================
     # Learning / Help Handlers
@@ -2250,7 +2087,7 @@ class PrismMCPServer:
                     "gg / G": "Top / Bottom of file",
                     "Ctrl+d/u": "Half page down/up",
                     "%": "Matching bracket",
-                }
+                },
             },
             "editing": {
                 "title": "Editing",
@@ -2263,7 +2100,7 @@ class PrismMCPServer:
                     "u / Ctrl+R": "Undo / Redo",
                     "ciw": "Change inner word",
                     ">>": "Indent line",
-                }
+                },
             },
             "search": {
                 "title": "Search",
@@ -2272,7 +2109,7 @@ class PrismMCPServer:
                     "n / N": "Next / Previous match",
                     "*": "Search word under cursor",
                     ":%s/old/new/g": "Replace all",
-                }
+                },
             },
             "visual": {
                 "title": "Visual Mode",
@@ -2281,7 +2118,7 @@ class PrismMCPServer:
                     "V": "Line selection",
                     "viw": "Select word",
                     "vi{": "Select inside braces",
-                }
+                },
             },
             "files": {
                 "title": "Files",
@@ -2290,7 +2127,7 @@ class PrismMCPServer:
                     ":q": "Quit",
                     ":wq": "Save & quit",
                     ":e path": "Open file",
-                }
+                },
             },
         }
 
@@ -2309,48 +2146,69 @@ class PrismMCPServer:
         suggestions = []
 
         patterns = [
-            (["delete", "remove"], [
-                ("dd", "Delete line"),
-                ("dw", "Delete word"),
-                ("diw", "Delete inner word"),
-                ('di"', "Delete inside quotes"),
-            ]),
-            (["copy", "yank", "duplicate"], [
-                ("yy", "Copy line"),
-                ("yw", "Copy word"),
-                ("yyp", "Duplicate line"),
-            ]),
-            (["paste"], [
-                ("p", "Paste after"),
-                ("P", "Paste before"),
-            ]),
-            (["replace", "change"], [
-                ("ciw", "Change word"),
-                ("cc", "Change line"),
-                ('ci"', "Change inside quotes"),
-                (":%s/old/new/g", "Replace all"),
-            ]),
+            (
+                ["delete", "remove"],
+                [
+                    ("dd", "Delete line"),
+                    ("dw", "Delete word"),
+                    ("diw", "Delete inner word"),
+                    ('di"', "Delete inside quotes"),
+                ],
+            ),
+            (
+                ["copy", "yank", "duplicate"],
+                [
+                    ("yy", "Copy line"),
+                    ("yw", "Copy word"),
+                    ("yyp", "Duplicate line"),
+                ],
+            ),
+            (
+                ["paste"],
+                [
+                    ("p", "Paste after"),
+                    ("P", "Paste before"),
+                ],
+            ),
+            (
+                ["replace", "change"],
+                [
+                    ("ciw", "Change word"),
+                    ("cc", "Change line"),
+                    ('ci"', "Change inside quotes"),
+                    (":%s/old/new/g", "Replace all"),
+                ],
+            ),
             (["undo"], [("u", "Undo"), ("Ctrl+R", "Redo")]),
-            (["search", "find"], [
-                ("/pattern", "Search forward"),
-                ("*", "Search word under cursor"),
-            ]),
-            (["select"], [
-                ("viw", "Select word"),
-                ("V", "Select line"),
-                ("ggVG", "Select all"),
-            ]),
+            (
+                ["search", "find"],
+                [
+                    ("/pattern", "Search forward"),
+                    ("*", "Search word under cursor"),
+                ],
+            ),
+            (
+                ["select"],
+                [
+                    ("viw", "Select word"),
+                    ("V", "Select line"),
+                    ("ggVG", "Select all"),
+                ],
+            ),
             (["indent"], [(">>", "Indent"), ("<<", "Dedent")]),
             (["save"], [(":w", "Save"), (":wq", "Save & quit")]),
             (["quit", "exit"], [(":q", "Quit"), (":q!", "Force quit")]),
             (["comment"], [("gcc", "Toggle comment")]),
             (["move line"], [(":m .+1", "Move down"), (":m .-2", "Move up")]),
-            (["go to", "jump"], [
-                (":{n}", "Go to line n"),
-                ("gg", "Go to top"),
-                ("G", "Go to bottom"),
-                ("gd", "Go to definition"),
-            ]),
+            (
+                ["go to", "jump"],
+                [
+                    (":{n}", "Go to line n"),
+                    ("gg", "Go to top"),
+                    ("G", "Go to bottom"),
+                    ("gd", "Go to definition"),
+                ],
+            ),
         ]
 
         for keywords, cmds in patterns:
@@ -2362,7 +2220,7 @@ class PrismMCPServer:
 
         return {
             "task": task,
-            "suggestions": [{"command": c, "description": d} for c, d in suggestions]
+            "suggestions": [{"command": c, "description": d} for c, d in suggestions],
         }
 
     def _narrate(self, message: str):
@@ -2417,6 +2275,7 @@ class PrismMCPServer:
             except Exception as e:
                 logger.error(f"Error handling message: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
 
     async def run(self):
@@ -2454,34 +2313,19 @@ class PrismMCPServer:
             "id": msg_id,
             "result": {
                 "protocolVersion": "2024-11-05",
-                "serverInfo": {
-                    "name": "prism-nvim",
-                    "version": "0.1.0"
-                },
-                "capabilities": {
-                    "tools": {
-                        "listChanged": False
-                    }
-                }
-            }
+                "serverInfo": {"name": "prism-nvim", "version": "0.1.0"},
+                "capabilities": {"tools": {"listChanged": False}},
+            },
         }
 
     def _handle_list_tools(self, msg_id: int) -> dict:
         """Handle tools/list request."""
         tools_list = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "inputSchema": tool.input_schema
-            }
+            {"name": tool.name, "description": tool.description, "inputSchema": tool.input_schema}
             for tool in self.tools.values()
         ]
 
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": {"tools": tools_list}
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": tools_list}}
 
     def _format_result(self, tool_name: str, result: dict) -> str:
         """Format tool result as human-readable text."""
@@ -2651,7 +2495,7 @@ class PrismMCPServer:
             lines = [
                 f"auto_save: {cfg.get('auto_save', False)}",
                 f"keep_focus: {cfg.get('keep_focus', True)}",
-                f"narrated: {cfg.get('narrated', False)}"
+                f"narrated: {cfg.get('narrated', False)}",
             ]
             return "\n".join(lines)
 
@@ -2835,10 +2679,7 @@ class PrismMCPServer:
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
-                "error": {
-                    "code": -32601,
-                    "message": f"Unknown tool: {tool_name}"
-                }
+                "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"},
             }
 
         tool = self.tools[tool_name]
@@ -2849,27 +2690,14 @@ class PrismMCPServer:
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": formatted
-                        }
-                    ]
-                }
+                "result": {"content": [{"type": "text", "text": formatted}]},
             }
         except Exception as e:
             logger.error(f"Tool error: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {
-                    "code": -32000,
-                    "message": str(e)
-                }
-            }
+            return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32000, "message": str(e)}}
 
     async def _handle_tool_call(self, msg_id: int, params: dict) -> dict:
         """Handle tools/call request (async wrapper)."""
@@ -2881,7 +2709,7 @@ def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler("/tmp/prism-mcp.log")]
+        handlers=[logging.FileHandler("/tmp/prism-mcp.log")],
     )
 
     server = PrismMCPServer()

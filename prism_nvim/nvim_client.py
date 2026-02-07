@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 # Try to import msgpack, fall back to pure Python implementation
 try:
     import msgpack
+
     HAS_MSGPACK = True
 except ImportError:
     HAS_MSGPACK = False
@@ -24,6 +25,7 @@ except ImportError:
 @dataclass
 class Buffer:
     """Represents a Neovim buffer."""
+
     id: int
     name: str
     filetype: str
@@ -34,6 +36,7 @@ class Buffer:
 @dataclass
 class Window:
     """Represents a Neovim window."""
+
     id: int
     buffer_id: int
     cursor: tuple[int, int]  # (line, col)
@@ -44,6 +47,7 @@ class Window:
 @dataclass
 class Selection:
     """Represents a visual selection."""
+
     text: str
     start_line: int
     start_col: int
@@ -76,8 +80,7 @@ class NeovimClient:
 
         if not HAS_MSGPACK:
             raise ImportError(
-                "msgpack is required for Neovim RPC. "
-                "Install it with: pip install msgpack"
+                "msgpack is required for Neovim RPC. " "Install it with: pip install msgpack"
             )
 
     def connect(self) -> bool:
@@ -88,6 +91,7 @@ class NeovimClient:
             # Use socket registry (robust multi-instance support)
             try:
                 from .socket_registry import find_socket
+
                 address = find_socket()
             except ImportError:
                 address = os.environ.get("NVIM")
@@ -98,8 +102,7 @@ class NeovimClient:
 
         if not address:
             raise ConnectionError(
-                "Could not find Neovim instance. "
-                "Start Neovim with: nvim --listen /tmp/nvim.sock"
+                "Could not find Neovim instance. " "Start Neovim with: nvim --listen /tmp/nvim.sock"
             )
 
         try:
@@ -134,6 +137,7 @@ class NeovimClient:
 
         # Check for PID-based sockets (nvim-<pid>.sock)
         import glob
+
         pid_sockets = sorted(glob.glob("/tmp/nvim-*.sock"), key=os.path.getmtime, reverse=True)
         candidates = pid_sockets + candidates
 
@@ -173,7 +177,7 @@ class NeovimClient:
     def _decode_bytes(self, obj: Any) -> Any:
         """Recursively decode bytes to strings in nested structures."""
         if isinstance(obj, bytes):
-            return obj.decode('utf-8', errors='replace')
+            return obj.decode("utf-8", errors="replace")
         elif isinstance(obj, list):
             return [self._decode_bytes(item) for item in obj]
         elif isinstance(obj, dict):
@@ -268,10 +272,7 @@ class NeovimClient:
         self.call("nvim_buf_set_lines", buf_id, 0, -1, False, lines)
 
     def get_buffer_lines(
-        self,
-        start: int = 0,
-        end: int = -1,
-        buf_id: Optional[int] = None
+        self, start: int = 0, end: int = -1, buf_id: Optional[int] = None
     ) -> list[str]:
         """Get lines from a buffer."""
         if buf_id is None:
@@ -279,24 +280,14 @@ class NeovimClient:
         return self.call("nvim_buf_get_lines", buf_id, start, end, False)
 
     def set_buffer_lines(
-        self,
-        lines: list[str],
-        start: int = 0,
-        end: int = -1,
-        buf_id: Optional[int] = None
+        self, lines: list[str], start: int = 0, end: int = -1, buf_id: Optional[int] = None
     ) -> None:
         """Set lines in a buffer."""
         if buf_id is None:
             buf_id = self.call("nvim_get_current_buf")
         self.call("nvim_buf_set_lines", buf_id, start, end, False, lines)
 
-    def insert_text(
-        self,
-        text: str,
-        line: int,
-        col: int,
-        buf_id: Optional[int] = None
-    ) -> None:
+    def insert_text(self, text: str, line: int, col: int, buf_id: Optional[int] = None) -> None:
         """Insert text at a specific position."""
         if buf_id is None:
             buf_id = self.call("nvim_get_current_buf")
@@ -459,16 +450,16 @@ class NeovimClient:
         buf_id = self.call("nvim_get_current_buf")
 
         if mode == "V":  # Visual line mode
-            lines = self.call("nvim_buf_get_lines", buf_id, start[0]-1, end[0], False)
+            lines = self.call("nvim_buf_get_lines", buf_id, start[0] - 1, end[0], False)
             text = "\n".join(lines)
         else:
             # Get text between marks
-            lines = self.call("nvim_buf_get_lines", buf_id, start[0]-1, end[0], False)
+            lines = self.call("nvim_buf_get_lines", buf_id, start[0] - 1, end[0], False)
             if len(lines) == 1:
-                text = lines[0][start[1]:end[1]+1]
+                text = lines[0][start[1] : end[1] + 1]
             else:
-                lines[0] = lines[0][start[1]:]
-                lines[-1] = lines[-1][:end[1]+1]
+                lines[0] = lines[0][start[1] :]
+                lines[-1] = lines[-1][: end[1] + 1]
                 text = "\n".join(lines)
 
         return Selection(
@@ -480,13 +471,7 @@ class NeovimClient:
             mode=mode,
         )
 
-    def select_range(
-        self,
-        start_line: int,
-        start_col: int,
-        end_line: int,
-        end_col: int
-    ) -> None:
+    def select_range(self, start_line: int, start_col: int, end_line: int, end_col: int) -> None:
         """Select a range of text."""
         self.set_cursor(start_line, start_col)
         self.command("normal! v")
@@ -501,7 +486,8 @@ class NeovimClient:
         if buf_id is None:
             buf_id = self.call("nvim_get_current_buf")
 
-        diagnostics = self.lua("""
+        diagnostics = self.lua(
+            """
             local buf = ...
             local diagnostics = vim.diagnostic.get(buf)
             local result = {}
@@ -516,7 +502,9 @@ class NeovimClient:
                 })
             end
             return result
-        """, buf_id)
+        """,
+            buf_id,
+        )
 
         return diagnostics or []
 
@@ -531,7 +519,8 @@ class NeovimClient:
     def get_hover_info(self) -> Optional[str]:
         """Get LSP hover information."""
         try:
-            result = self.lua("""
+            result = self.lua(
+                """
                 local params = vim.lsp.util.make_position_params()
                 local result = vim.lsp.buf_request_sync(0, 'textDocument/hover', params, 1000)
                 if result and result[1] and result[1].result and result[1].result.contents then
@@ -543,7 +532,8 @@ class NeovimClient:
                     end
                 end
                 return nil
-            """)
+            """
+            )
             return result
         except:
             return None
@@ -562,7 +552,8 @@ class NeovimClient:
 
     def search(self, pattern: str, flags: str = "") -> list[tuple[int, int]]:
         """Search for a pattern in the current buffer."""
-        results = self.lua(f"""
+        results = self.lua(
+            f"""
             local pattern = ...
             local results = {{}}
             local buf = vim.api.nvim_get_current_buf()
@@ -577,21 +568,23 @@ class NeovimClient:
                 end
             end
             return results
-        """, pattern)
+        """,
+            pattern,
+        )
         return [tuple(r) for r in (results or [])]
 
-    def replace(
-        self,
-        pattern: str,
-        replacement: str,
-        flags: str = "g"
-    ) -> int:
+    def replace(self, pattern: str, replacement: str, flags: str = "g") -> int:
         """Replace pattern in current buffer. Returns count of replacements."""
-        count = self.lua(f"""
+        count = self.lua(
+            f"""
             local pattern, replacement, flags = ...
             vim.cmd(string.format('%%s/%s/%s/%s', pattern, replacement, flags))
             return vim.v.searchcount.total or 0
-        """, pattern, replacement, flags)
+        """,
+            pattern,
+            replacement,
+            flags,
+        )
         return count or 0
 
     # =========================================================================
@@ -600,7 +593,9 @@ class NeovimClient:
 
     def git_status(self) -> dict:
         """Get git status for the current project."""
-        return self.lua("""
+        return (
+            self.lua(
+                """
             local result = {
                 branch = '',
                 staged = {},
@@ -630,7 +625,10 @@ class NeovimClient:
             end
 
             return result
-        """) or {}
+        """
+            )
+            or {}
+        )
 
     def git_diff(self, staged: bool = False) -> str:
         """Get git diff."""
@@ -659,11 +657,7 @@ class NeovimClient:
     # Notifications & UI
     # =========================================================================
 
-    def notify(
-        self,
-        message: str,
-        level: str = "info"
-    ) -> None:
+    def notify(self, message: str, level: str = "info") -> None:
         """Show a notification in Neovim."""
         levels = {
             "error": "vim.log.levels.ERROR",
@@ -672,7 +666,7 @@ class NeovimClient:
             "debug": "vim.log.levels.DEBUG",
         }
         vim_level = levels.get(level, "vim.log.levels.INFO")
-        self.lua(f'vim.notify(..., {vim_level})', message)
+        self.lua(f"vim.notify(..., {vim_level})", message)
 
     def echo(self, message: str) -> None:
         """Echo a message in the command line."""

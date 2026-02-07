@@ -20,7 +20,7 @@ def get_process_ancestors() -> list[int]:
     """Get list of ancestor PIDs (self, parent, grandparent, ...)."""
     ancestors = []
     pid = os.getpid()
-    
+
     while pid > 1:
         ancestors.append(pid)
         try:
@@ -32,9 +32,9 @@ def get_process_ancestors() -> list[int]:
             else:
                 # macOS fallback
                 import subprocess
+
                 result = subprocess.run(
-                    ["ps", "-o", "ppid=", "-p", str(pid)],
-                    capture_output=True, text=True
+                    ["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     pid = int(result.stdout.strip())
@@ -42,22 +42,22 @@ def get_process_ancestors() -> list[int]:
                     break
         except (FileNotFoundError, ValueError, IndexError):
             break
-    
+
     return ancestors
 
 
 def register_socket(nvim_pid: int, socket_path: str) -> None:
     """Register a Neovim socket in the registry."""
     registry = load_registry()
-    
+
     registry[str(nvim_pid)] = {
         "socket": socket_path,
         "registered_at": time.time(),
     }
-    
+
     # Clean up stale entries (older than 24h or dead processes)
     clean_registry(registry)
-    
+
     save_registry(registry)
 
 
@@ -70,41 +70,39 @@ def unregister_socket(nvim_pid: int) -> None:
 
 def find_socket() -> Optional[str]:
     """Find the socket for the Neovim instance that spawned us.
-    
+
     Walks up the process tree to find a registered Neovim PID.
     """
     # First check NVIM env (most direct)
     nvim_env = os.environ.get("NVIM")
     if nvim_env and os.path.exists(nvim_env):
         return nvim_env
-    
+
     # Walk process tree to find parent Neovim
     registry = load_registry()
     ancestors = get_process_ancestors()
-    
+
     for pid in ancestors:
         if str(pid) in registry:
             socket_path = registry[str(pid)]["socket"]
             if os.path.exists(socket_path):
                 return socket_path
-    
+
     # Fallback: try most recently registered socket
     if registry:
         sorted_entries = sorted(
-            registry.items(),
-            key=lambda x: x[1].get("registered_at", 0),
-            reverse=True
+            registry.items(), key=lambda x: x[1].get("registered_at", 0), reverse=True
         )
         for pid, info in sorted_entries:
             socket_path = info["socket"]
             if os.path.exists(socket_path):
                 return socket_path
-    
+
     # Last resort: common socket paths
     for path in ["/tmp/nvim.sock", f"/tmp/nvim-{os.getppid()}.sock"]:
         if os.path.exists(path):
             return path
-    
+
     return None
 
 
@@ -132,23 +130,23 @@ def clean_registry(registry: dict) -> None:
     """Remove stale entries from registry."""
     stale = []
     now = time.time()
-    
+
     for pid, info in registry.items():
         # Remove if older than 24 hours
         if now - info.get("registered_at", 0) > 86400:
             stale.append(pid)
             continue
-        
+
         # Remove if socket doesn't exist
         if not os.path.exists(info["socket"]):
             stale.append(pid)
             continue
-        
+
         # Remove if process is dead
         try:
             os.kill(int(pid), 0)
         except (ProcessLookupError, ValueError):
             stale.append(pid)
-    
+
     for pid in stale:
         registry.pop(pid, None)
