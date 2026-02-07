@@ -41,14 +41,24 @@ Control Neovim with natural language. Edit files with vim commands instead of se
 
 ## Install
 
-**Option 1: Claude Code Skill** (Recommended)
+**Option 1: Claude Code Plugin** (Recommended)
+
+```bash
+# Add marketplace (one-time)
+/plugin add-marketplace genomewalker/prism.nvim
+
+# Install plugin
+/plugin install prism-nvim@genomewalker-prism-nvim
+```
+
+**Option 2: Claude Code Skill**
 
 In Claude Code, run:
 ```
 /prism install
 ```
 
-**Option 2: Curl**
+**Option 3: Curl**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/genomewalker/prism.nvim/main/install.sh | bash
 ```
