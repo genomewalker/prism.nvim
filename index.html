@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>prism.nvim</title>
+<meta name="description" content="Claude controls Neovim directly via MCP.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green: #22c55e;
+  --green-bright: #4ade80;
+  --green-glow: rgba(34, 197, 94, 0.4);
+  --orange: #f97316;
+  --bg: #0a0a0a;
+  --bg-card: #111;
+  --bg-code: #0d0d0d;
+  --border: #222;
+  --text: #888;
+  --text-bright: #eee;
+  --mono: "JetBrains Mono", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--mono);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+::selection { background: var(--green); color: #000; }
+
+a { color: var(--green); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Grid background */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(34,197,94,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,197,94,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Header */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(10,10,10,0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-bright);
+}
+
+.logo span { color: var(--green); }
+
+nav { display: flex; gap: 32px; }
+nav a { color: var(--text); font-size: 13px; }
+nav a:hover { color: var(--green); text-decoration: none; }
+
+.gh-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.gh-link:hover { color: var(--text-bright); text-decoration: none; }
+
+/* Hero */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+  opacity: 0.3;
+  pointer-events: none;
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.4; transform: translateX(-50%) scale(1.1); }
+}
+
+.hero h1 {
+  font-size: clamp(48px, 10vw, 100px);
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -4px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.hero h1 .dot {
+  color: var(--green);
+  text-shadow: 0 0 30px var(--green-glow);
+}
+
+.tagline {
+  font-size: clamp(16px, 3vw, 22px);
+  color: var(--text);
+  margin-bottom: 48px;
+  max-width: 500px;
+}
+
+.tagline strong {
+  color: var(--orange);
+}
+
+/* Demo terminal */
+.demo {
+  width: 100%;
+  max-width: 800px;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.1);
+  margin-bottom: 48px;
+}
+
+.demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: #151515;
+  border-bottom: 1px solid var(--border);
+}
+
+.demo-dot { width: 12px; height: 12px; border-radius: 50%; background: #333; }
+.demo-dot.r { background: #ff5f57; }
+.demo-dot.y { background: #febc2e; }
+.demo-dot.g { background: #28c840; }
+
+.demo-title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+  margin-right: 48px;
+}
+
+.demo-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.demo-editor, .demo-claude {
+  padding: 20px;
+  min-height: 280px;
+}
+
+.demo-editor {
+  border-right: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.demo-claude {
+  background: #0f0f0f;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.line { display: flex; }
+.ln {
+  width: 28px;
+  color: #444;
+  text-align: right;
+  padding-right: 16px;
+  user-select: none;
+}
+
+.line.hl {
+  background: rgba(34,197,94,0.15);
+  margin: 0 -20px;
+  padding: 0 20px;
+  border-left: 3px solid var(--green);
+  animation: flash 0.6s ease;
+}
+
+@keyframes flash {
+  0% { background: rgba(34,197,94,0.4); }
+  100% { background: rgba(34,197,94,0.15); }
+}
+
+.code-changed {
+  color: var(--green) !important;
+  text-shadow: 0 0 10px var(--green-glow);
+  transition: all 0.3s ease;
+}
+
+/* Syntax */
+.kw { color: #c678dd; }
+.fn { color: #61afef; }
+.st { color: #98c379; }
+.vr { color: #e5c07b; }
+
+/* Chat animation */
+.msg { opacity: 0; transform: translateY(10px); }
+.msg.show { opacity: 1; transform: translateY(0); transition: all 0.4s ease; }
+
+.msg-you { color: var(--green); }
+.msg-text { color: var(--text-bright); }
+.msg-claude { color: var(--text); }
+.msg-cmd {
+  background: #181818;
+  border-left: 2px solid var(--orange);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+.msg-done { color: var(--green); }
+
+.cursor {
+  display: inline-block;
+  width: 10px;
+  height: 18px;
+  background: var(--green);
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.replay {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: #181818;
+  border: 1px solid #333;
+  color: #666;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.replay:hover { border-color: var(--green); color: var(--green); }
+
+/* Scroll hint */
+.scroll-hint {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #444;
+  font-size: 12px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* Install section */
+.install {
+  padding: 120px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.install h2 {
+  font-size: 14px;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
+
+.install h3 {
+  font-size: clamp(28px, 5vw, 40px);
+  color: var(--text-bright);
+  font-weight: 600;
+  margin-bottom: 48px;
+  letter-spacing: -1px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.step-num {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.step-content h4 {
+  font-size: 16px;
+  color: var(--text-bright);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.step-content p {
+  color: var(--text);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.code-block code {
+  color: var(--text-bright);
+  font-size: 13px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.code-block .comment { color: #555; }
+.code-block .url { color: var(--green); }
+
+.copy {
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.copy:hover { border-color: var(--green); color: var(--green); }
+.copy.done { border-color: var(--green); color: var(--green); }
+
+.step-note {
+  font-size: 12px;
+  color: #555;
+  margin-top: 12px;
+}
+
+.step-note kbd {
+  background: #181818;
+  border: 1px solid #333;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* Features */
+.features {
+  padding: 120px 24px;
+  background: linear-gradient(180deg, transparent, rgba(34,197,94,0.02));
+}
+
+.features-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.features h2 {
+  font-size: 14px;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.feature {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+  transition: all 0.3s;
+}
+
+.feature:hover {
+  border-color: #333;
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.feature h3 {
+  font-size: 15px;
+  color: var(--text-bright);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.feature p {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* Keys section */
+.keys {
+  padding: 80px 24px 120px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.keys h2 {
+  font-size: 14px;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.key-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.key-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.key {
+  background: #181818;
+  border: 1px solid #333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.key-desc {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Footer */
+footer {
+  padding: 48px 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.footer-links a { color: var(--text); font-size: 13px; }
+.footer-links a:hover { color: var(--green); }
+
+.footer-credit {
+  font-size: 12px;
+  color: #444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  header { padding: 12px 16px; }
+  nav { display: none; }
+
+  .hero { padding: 100px 20px 60px; min-height: auto; }
+  .hero h1 { letter-spacing: -2px; }
+
+  .demo-split { grid-template-columns: 1fr; }
+  .demo-editor { border-right: none; border-bottom: 1px solid var(--border); min-height: 200px; }
+  .demo-claude { min-height: 180px; }
+  .demo-editor, .demo-claude { padding: 16px; font-size: 12px; }
+
+  .install { padding: 80px 20px; }
+  .step { grid-template-columns: 40px 1fr; gap: 16px; }
+  .step-num { width: 40px; height: 40px; font-size: 16px; }
+  .code-block { flex-direction: column; align-items: stretch; gap: 12px; }
+  .code-block code { font-size: 11px; }
+
+  .feature-grid { grid-template-columns: 1fr; gap: 16px; }
+  .feature { padding: 24px 20px; }
+
+  .key-list { grid-template-columns: 1fr; }
+
+  .scroll-hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<header>
+  <div class="logo">prism<span>.</span>nvim</div>
+  <nav>
+    <a href="#install">Install</a>
+    <a href="#features">Features</a>
+    <a href="#keys">Keys</a>
+  </nav>
+  <a href="https://github.com/genomewalker/prism.nvim" class="gh-link">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    GitHub
+  </a>
+</header>
+
+<section class="hero">
+  <h1>prism<span class="dot">.</span>nvim</h1>
+  <p class="tagline"><strong>Claude</strong> controls your editor directly. Talk to it. Watch it edit.</p>
+
+  <div class="demo" style="position: relative;">
+    <div class="demo-bar">
+      <div class="demo-dot r"></div>
+      <div class="demo-dot y"></div>
+      <div class="demo-dot g"></div>
+      <div class="demo-title">nvim</div>
+    </div>
+    <div class="demo-split">
+      <div class="demo-editor">
+        <div class="line"><span class="ln">1</span><span class="kw">import</span> { Router } <span class="kw">from</span> <span class="st">'express'</span></div>
+        <div class="line"><span class="ln">2</span></div>
+        <div class="line"><span class="ln">3</span><span class="kw">const</span> <span class="vr">router</span> = <span class="fn">Router</span>()</div>
+        <div class="line"><span class="ln">4</span></div>
+        <div class="line"><span class="ln">5</span>router.<span class="fn">get</span>(<span class="st">'/users'</span>, <span class="kw">async</span> (req, res) => {</div>
+        <div class="line" id="codeLine"><span class="ln">6</span>  <span id="codeText"><span class="fn">console</span>.<span class="fn">log</span>(<span class="st">'fetching'</span>)</span></div>
+        <div class="line"><span class="ln">7</span>  <span class="kw">const</span> users = <span class="kw">await</span> db.<span class="fn">find</span>()</div>
+        <div class="line"><span class="ln">8</span>  res.<span class="fn">json</span>(users)</div>
+        <div class="line"><span class="ln">9</span>})</div>
+      </div>
+      <div class="demo-claude">
+        <div class="msg" id="m1"><span class="msg-you">you:</span> <span class="msg-text" id="userText"></span><span class="cursor" id="cur"></span></div>
+        <div class="msg" id="m2"><span class="msg-claude" id="claudeText"></span></div>
+        <div class="msg" id="m3"><div class="msg-cmd" id="cmdText"></div></div>
+        <div class="msg" id="m4"><span class="msg-done" id="doneText"></span></div>
+      </div>
+    </div>
+    <button class="replay" onclick="replay()">↻ replay</button>
+  </div>
+
+  <div class="scroll-hint">↓ scroll</div>
+</section>
+
+<section class="install" id="install">
+  <h2>Get Started</h2>
+  <h3>Two commands. That's it.</h3>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>Add the plugin</h4>
+        <p>Run this in Claude Code to register the plugin from GitHub:</p>
+        <div class="code-block">
+          <code>/plugins:add <span class="url">https://github.com/genomewalker/prism.nvim</span></code>
+          <button class="copy" onclick="copyCmd(this, '/plugins:add https://github.com/genomewalker/prism.nvim')">copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>Install</h4>
+        <p>Now install everything—Neovim plugin, MCP server, shell helpers:</p>
+        <div class="code-block">
+          <code>/prism install</code>
+          <button class="copy" onclick="copyCmd(this, '/prism install')">copy</button>
+        </div>
+        <p class="step-note">Restart Claude Code and Neovim. Press <kbd>Ctrl+;</kbd> to toggle Claude.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="features-inner">
+    <h2>Why Prism</h2>
+
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <h3>40+ Vibe Coder Tools</h3>
+        <p>Comment, duplicate, move lines, fold code, indent—all via natural language. No vim knowledge needed.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📚</div>
+        <h3>Learn Vim Mode</h3>
+        <p>Enable narrated mode to see vim commands as they execute. Learn vim while Claude does the work.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">👁️</div>
+        <h3>Visible Editing</h3>
+        <p>Watch every edit happen live. Files open, cursor jumps to the line, changes appear in real-time.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <h3>One Keybind</h3>
+        <p>Ctrl+; toggles Claude terminal. Passthrough mode means natural typing—escape only when you want.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📤</div>
+        <h3>Send Context</h3>
+        <p>Selection, buffer, diagnostics—send anything to Claude with a keystroke. Right-click for quick actions.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛡️</div>
+        <h3>Protected Terminal</h3>
+        <p>Terminal window is protected from buffer-switching commands. Claude can't accidentally close it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="tools" style="background: linear-gradient(180deg, rgba(34,197,94,0.02), transparent);">
+  <h2>Vibe Coding</h2>
+  <h3>Don't know vim? No problem.</h3>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">💬</div>
+      <div class="step-content">
+        <h4>Just describe what you want</h4>
+        <p>"Comment these lines", "Move this function up", "Duplicate this block"</p>
+        <div class="code-block" style="background: #0f0f0f; flex-direction: column; align-items: flex-start; gap: 8px;">
+          <code style="color: #888;">→ comment, duplicate_line, move_line, delete_line, join_lines</code>
+          <code style="color: #888;">→ select_word, select_line, select_block, select_all</code>
+          <code style="color: #888;">→ indent, dedent, fold, unfold, undo, redo</code>
+          <code style="color: #888;">→ goto_line, next_error, prev_error, jump_back, jump_forward</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">📚</div>
+      <div class="step-content">
+        <h4>Learn vim as you go</h4>
+        <p>Enable narrated mode and see what vim commands Claude uses:</p>
+        <div class="code-block">
+          <code><span class="url">set_config narrated=true</span></code>
+        </div>
+        <p class="step-note">Every action shows the equivalent vim command: <kbd>📚 Indent line (>>)</kbd></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">❓</div>
+      <div class="step-content">
+        <h4>Ask about vim commands</h4>
+        <p>Built-in learning tools:</p>
+        <div class="code-block" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+          <code><span class="comment">"What does ciw do?"</span> → explain_command</code>
+          <code><span class="comment">"How do I delete inside quotes?"</span> → suggest_command</code>
+          <code><span class="comment">"Show me editing commands"</span> → vim_cheatsheet</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="keys" id="keys">
+  <h2>Keybindings</h2>
+  <div class="key-list">
+    <div class="key-item"><span class="key">Ctrl+;</span><span class="key-desc">Toggle Claude terminal</span></div>
+    <div class="key-item"><span class="key">Ctrl+\ Ctrl+\</span><span class="key-desc">Exit terminal mode</span></div>
+    <div class="key-item"><span class="key">Ctrl+Right-click</span><span class="key-desc">Context menu (copy, paste, etc)</span></div>
+    <div class="key-item"><span class="key">&lt;leader&gt;cs</span><span class="key-desc">Send selection to Claude</span></div>
+    <div class="key-item"><span class="key">&lt;leader&gt;cb</span><span class="key-desc">Send buffer to Claude</span></div>
+    <div class="key-item"><span class="key">&lt;leader&gt;cd</span><span class="key-desc">Send diagnostics to Claude</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/genomewalker/prism.nvim">GitHub</a>
+    <a href="https://github.com/genomewalker/prism.nvim/issues">Issues</a>
+    <a href="https://github.com/genomewalker/prism.nvim#readme">Docs</a>
+  </div>
+  <div class="footer-credit">prism.nvim — Claude meets Neovim</div>
+</footer>
+
+<script>
+function copyCmd(btn, text) {
+  navigator.clipboard.writeText(text);
+  btn.textContent = 'copied';
+  btn.classList.add('done');
+  setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('done'); }, 2000);
+}
+
+// Demo animation
+const userMsg = "replace console.log with logger.debug";
+const claudeMsg = "On it.";
+const cmdMsg = '%s/console.log/logger.debug/g';
+const doneMsg = "✓ Updated line 6";
+
+let timeouts = [];
+
+function clearAllTimeouts() {
+  timeouts.forEach(t => clearTimeout(t));
+  timeouts = [];
+}
+
+function wait(ms) {
+  return new Promise(r => {
+    const t = setTimeout(r, ms);
+    timeouts.push(t);
+  });
+}
+
+function typeText(el, text, speed) {
+  return new Promise(resolve => {
+    let i = 0;
+    function t() {
+      if (i < text.length) {
+        el.textContent += text[i++];
+        const tid = setTimeout(t, speed);
+        timeouts.push(tid);
+      } else {
+        resolve();
+      }
+    }
+    t();
+  });
+}
+
+async function runDemo() {
+  clearAllTimeouts();
+
+  // Reset everything
+  const m1 = document.getElementById('m1');
+  const m2 = document.getElementById('m2');
+  const m3 = document.getElementById('m3');
+  const m4 = document.getElementById('m4');
+  const userText = document.getElementById('userText');
+  const claudeText = document.getElementById('claudeText');
+  const cmdText = document.getElementById('cmdText');
+  const doneText = document.getElementById('doneText');
+  const cursor = document.getElementById('cur');
+  const codeLine = document.getElementById('codeLine');
+  const codeText = document.getElementById('codeText');
+
+  [m1, m2, m3, m4].forEach(el => el.classList.remove('show'));
+  userText.textContent = '';
+  claudeText.textContent = '';
+  cmdText.textContent = '';
+  doneText.textContent = '';
+  cursor.style.display = 'inline-block';
+  codeLine.classList.remove('hl');
+  codeText.innerHTML = '<span class="fn">console</span>.<span class="fn">log</span>(<span class="st">\'fetching\'</span>)';
+
+  await wait(500);
+
+  // Show user prompt and type
+  m1.classList.add('show');
+  await wait(300);
+  await typeText(userText, userMsg, 30);
+  cursor.style.display = 'none';
+
+  await wait(400);
+
+  // Claude responds
+  m2.classList.add('show');
+  claudeText.textContent = claudeMsg;
+
+  await wait(300);
+
+  // Show command
+  m3.classList.add('show');
+  cmdText.textContent = cmdMsg;
+
+  await wait(500);
+
+  // THE EDIT - highlight line and change code
+  codeLine.classList.add('hl');
+  codeText.innerHTML = '<span class="code-changed">logger</span>.<span class="code-changed">debug</span>(<span class="st">\'fetching\'</span>)';
+
+  await wait(400);
+
+  // Done message
+  m4.classList.add('show');
+  doneText.textContent = doneMsg;
+}
+
+function replay() {
+  runDemo();
+}
+
+// Start demo after page loads
+window.addEventListener('load', () => {
+  setTimeout(runDemo, 800);
+});
+</script>
+
+</body>
+</html>
