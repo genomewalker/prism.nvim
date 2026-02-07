@@ -1,8 +1,8 @@
 ---
 name: prism
-description: Install and configure prism.nvim - Neovim integration with token-saving MCP tools. Use when user wants to set up Neovim integration, control Neovim from Claude, or save tokens with MCP editing.
+description: Install and configure prism.nvim - Neovim integration with token-saving MCP tools
 argument-hint: "[install|status|help]"
-allowed-tools: Bash(git *), Bash(python* *), Bash(pip *), Bash(mkdir *), Bash(ln *), Bash(cat *), Read, Write, Edit
+execution: direct
 ---
 
 # Prism.nvim - Claude Code + Neovim Integration
