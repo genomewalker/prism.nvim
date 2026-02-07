@@ -305,8 +305,12 @@ step "Setting up shell helpers..."
 SHELL_RC=""
 if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
     SHELL_RC="$HOME/.zshrc"
-elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
+elif [ -f "$HOME/.bashrc" ]; then
     SHELL_RC="$HOME/.bashrc"
+elif [ -f "$HOME/.bash_profile" ]; then
+    SHELL_RC="$HOME/.bash_profile"
+elif [ -f "$HOME/.profile" ]; then
+    SHELL_RC="$HOME/.profile"
 fi
 
 if [ -n "$SHELL_RC" ]; then
@@ -316,33 +320,55 @@ if [ -n "$SHELL_RC" ]; then
         cat >> "$SHELL_RC" << 'EOF'
 
 # Prism.nvim - nvim + Claude Code
-# Usage: nvc [claude-flags] [files]
+# Usage: nvc [claude-flags] [--] [files]
+# All flags before files (or --) go to Claude, rest to nvim
 # Examples:
-#   nvc                     # Just nvim with Claude
-#   nvc --continue          # Resume last conversation
-#   nvc --model opus        # Use Opus model
-#   nvc -c --model opus     # Continue with Opus
-#   nvc myfile.lua          # Open file (no Claude flags)
+#   nvc                       # Just nvim with Claude
+#   nvc -c                    # Resume last conversation
+#   nvc --model opus          # Use Opus model
+#   nvc -c --model opus       # Continue with Opus
+#   nvc --allowedTools Edit   # Only allow Edit tool
+#   nvc -- -O file1 file2     # Pass -O to nvim (use -- separator)
+#   nvc myfile.lua            # Open file
 nvc() {
-  local claude_args=""
+  local claude_args=()
   local nvim_args=()
+  local parsing_claude=true
 
-  # Parse: flags starting with - go to Claude, rest to nvim
   while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -c) claude_args="$claude_args --continue"; shift ;;
-      --*|-*) claude_args="$claude_args $1"; shift ;;
-      *) nvim_args+=("$1"); shift ;;
-    esac
+    if [[ "$1" == "--" ]]; then
+      parsing_claude=false
+      shift
+      continue
+    fi
+
+    if $parsing_claude; then
+      case "$1" in
+        -c) claude_args+=("--continue"); shift ;;
+        --*=*) claude_args+=("$1"); shift ;;  # --flag=value
+        --*|-*)
+          claude_args+=("$1")
+          # Check if next arg is the value (not a flag or file)
+          if [[ -n "$2" && ! "$2" =~ ^- && ! -e "$2" ]]; then
+            claude_args+=("$2")
+            shift
+          fi
+          shift
+          ;;
+        *) parsing_claude=false; nvim_args+=("$1"); shift ;;
+      esac
+    else
+      nvim_args+=("$1"); shift
+    fi
   done
 
-  CLAUDE_ARGS="$claude_args" nvim "${nvim_args[@]}"
+  CLAUDE_ARGS="${claude_args[*]}" nvim "${nvim_args[@]}"
 }
 EOF
-        info "Added shell aliases to $SHELL_RC"
-        echo "     nvc  = nvim with --continue"
-        echo "     nvco = nvim with Opus model"
-        echo "     nvcs = nvim with Sonnet model"
+        info "Added nvc function to $SHELL_RC"
+        echo "     nvc           = nvim with Claude"
+        echo "     nvc -c        = resume last conversation"
+        echo "     nvc --model opus = use Opus model"
     fi
 fi
 
@@ -359,7 +385,7 @@ echo "    ✓ Neovim plugin (native packages)"
 echo "    ✓ Claude Code MCP server config"
 echo "    ✓ CLAUDE.md with MCP instructions"
 echo "    ✓ Neovim config file"
-echo "    ✓ Shell aliases (nvc, nvco, nvcs)"
+echo "    ✓ Shell function (nvc)"
 echo ""
 echo "  Next steps:"
 echo ""
