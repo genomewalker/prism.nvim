@@ -261,6 +261,8 @@ function M.load_builtins()
     "close_diffs",
     "search_replace_global",
     "edit_file",
+    "set_trust_mode",
+    "set_style",
   }
 
   for _, tool_name in ipairs(builtin_tools) do

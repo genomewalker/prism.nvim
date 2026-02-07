@@ -86,7 +86,13 @@ class PrismMCPServer:
 
         self._register_tool(
             name="open_file",
-            description="Open a file in the editor area (left side). Terminal stays focused.",
+            description="""Open a file in the editor area (left side). Terminal stays focused.
+
+Use this when the user says:
+- "open X" / "show me X" / "pull up X"
+- "let me see X" / "display X" / "view X"
+- "open that file" / "show the file"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -107,7 +113,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="save_file",
-            description="Save the current buffer to disk. Optionally save to a new path.",
+            description="""Save the current buffer to disk. Optionally save to a new path.
+
+Use this when the user says:
+- "save" / "save this" / "save the file"
+- "write it" / "commit changes" / "persist"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -122,7 +133,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="close_file",
-            description="Close a buffer/file. Can force close without saving.",
+            description="""Close a buffer/file. Can force close without saving.
+
+Use this when the user says:
+- "close this" / "close the file" / "close X"
+- "done with this file" / "I'm finished with X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -142,7 +158,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="create_file",
-            description="Create a new file with the given content.",
+            description="""Create a new file with the given content.
+
+Use this when the user says:
+- "create X" / "make a new file" / "new file called X"
+- "create a file for X" / "start a new X file"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -164,7 +185,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_buffer_content",
-            description="Read the entire content of a buffer/file.",
+            description="""Read the entire content of a buffer/file.
+
+Use this when the user says:
+- "read X" / "show me what's in X" / "get the contents of X"
+- "what's in this file?" / "read the whole file"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -179,7 +205,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_buffer_lines",
-            description="Read specific lines from a buffer.",
+            description="""Read specific lines from a buffer.
+
+Use this when the user says:
+- "show lines X to Y" / "read lines X-Y" / "get lines X through Y"
+- "show me line X" / "what's on line X?"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -204,7 +235,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="set_buffer_content",
-            description="Replace entire buffer content. Use auto_save=true to save.",
+            description="""Replace entire buffer content. Use auto_save=true to save.
+
+Use this when the user says:
+- "replace the whole file with X" / "rewrite this file"
+- "set the content to X" / "overwrite everything with X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -226,7 +262,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="edit_buffer",
-            description="Edit specific lines. Replaces start to end with new lines.",
+            description="""Edit specific lines. Replaces start to end with new lines.
+
+Use this when the user says:
+- "change lines X to Y" / "edit lines X-Y" / "modify lines X through Y"
+- "replace lines X to Y with Z" / "update those lines"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -260,7 +301,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="insert_text",
-            description="Insert text at a specific position in the buffer.",
+            description="""Insert text at a specific position in the buffer.
+
+Use this when the user says:
+- "insert X at line Y" / "add X on line Y" / "put X at line Y"
+- "insert X here" / "add this text"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -283,28 +329,48 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_open_files",
-            description="Get a list of all open files/buffers in Neovim.",
+            description="""Get a list of all open files/buffers in Neovim.
+
+Use this when the user says:
+- "what files are open?" / "show open files" / "list buffers"
+- "what do I have open?" / "show my buffers"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_open_files,
         )
 
         self._register_tool(
             name="get_current_file",
-            description="Get information about the currently focused file/buffer.",
+            description="""Get information about the currently focused file/buffer.
+
+Use this when the user says:
+- "what file is this?" / "which file am I in?" / "current file"
+- "where am I?" / "what's the current buffer?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_current_file,
         )
 
         self._register_tool(
             name="get_cursor_position",
-            description="Get the current cursor position.",
+            description="""Get the current cursor position.
+
+Use this when the user says:
+- "where's the cursor?" / "cursor position" / "what line am I on?"
+- "where am I in the file?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_cursor_position,
         )
 
         self._register_tool(
             name="set_cursor_position",
-            description="Move the cursor to a specific position.",
+            description="""Move the cursor to a specific position.
+
+Use this when the user says:
+- "move cursor to line X column Y" / "put cursor at X,Y"
+- "position at line X, column Y"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -318,7 +384,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_selection",
-            description="Get the currently selected text (if in visual mode).",
+            description="""Get the currently selected text (if in visual mode).
+
+Use this when the user says:
+- "what's selected?" / "get the selection" / "show selected text"
+- "what did I highlight?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_selection,
         )
@@ -329,7 +400,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="split_window",
-            description="Create a new window split.",
+            description="""Create a new window split.
+
+Use this when the user says:
+- "split the window" / "create a split" / "open in split"
+- "side by side" / "vertical split" / "horizontal split"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -346,7 +422,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="close_window",
-            description="Close the current window.",
+            description="""Close the current window.
+
+Use this when the user says:
+- "close this window" / "close the split" / "close pane"
+- "get rid of this window"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -358,7 +439,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_windows",
-            description="Get information about all open windows.",
+            description="""Get information about all open windows.
+
+Use this when the user says:
+- "what windows are open?" / "show windows" / "list splits"
+- "how many windows?" / "window layout"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_windows,
         )
@@ -369,7 +455,13 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_diagnostics",
-            description="Get LSP diagnostics (errors, warnings) for a file.",
+            description="""Get LSP diagnostics (errors, warnings) for a file.
+
+Use this when the user says:
+- "show errors" / "any problems?" / "what's wrong?"
+- "list warnings" / "check for issues" / "diagnostics"
+- "are there any errors?" / "find problems"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -384,21 +476,36 @@ class PrismMCPServer:
 
         self._register_tool(
             name="goto_definition",
-            description="Go to the definition of the symbol under cursor.",
+            description="""Go to the definition of the symbol under cursor.
+
+Use this when the user says:
+- "go to definition" / "where is this defined?" / "jump to definition"
+- "show me the definition" / "take me to where this is defined"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_goto_definition,
         )
 
         self._register_tool(
             name="get_hover_info",
-            description="Get hover information (documentation) for symbol under cursor.",
+            description="""Get hover information (documentation) for symbol under cursor.
+
+Use this when the user says:
+- "what is this?" / "hover info" / "show documentation"
+- "explain this symbol" / "what does this do?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_hover_info,
         )
 
         self._register_tool(
             name="format_file",
-            description="Format the current file using LSP formatter.",
+            description="""Format the current file using LSP formatter.
+
+Use this when the user says:
+- "format this" / "prettify" / "auto-format"
+- "fix formatting" / "clean up the code" / "make it pretty"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_format_file,
         )
@@ -409,7 +516,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="search_in_file",
-            description="Search for a pattern in the current file.",
+            description="""Search for a pattern in the current file.
+
+Use this when the user says:
+- "find X" / "search for X" / "look for X"
+- "where is X?" / "locate X in this file"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -422,7 +534,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="search_and_replace",
-            description="Search and replace in the current file.",
+            description="""Search and replace in the current file.
+
+Use this when the user says:
+- "replace X with Y" / "change X to Y" / "substitute X for Y"
+- "find and replace" / "swap X for Y" / "rename X to Y"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -445,14 +562,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="git_status",
-            description="Get git status for the current project.",
+            description="""Get git status for the current project.
+
+Use this when the user says:
+- "git status" / "what's changed?" / "show changes"
+- "any uncommitted changes?" / "what's modified?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_git_status,
         )
 
         self._register_tool(
             name="git_diff",
-            description="Get git diff for the current project.",
+            description="""Get git diff for the current project.
+
+Use this when the user says:
+- "show diff" / "what changed?" / "git diff"
+- "show me the changes" / "what did I modify?"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -466,13 +593,142 @@ class PrismMCPServer:
             handler=self._handle_git_diff,
         )
 
+        self._register_tool(
+            name="git_stage",
+            description="""Stage files for commit.
+
+Use this when the user says:
+- "stage this file" / "add to commit" / "git add"
+- "stage all changes" / "add everything"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path to stage (current file if not specified)",
+                    },
+                    "all": {
+                        "type": "boolean",
+                        "description": "Stage all changes (git add -A)",
+                        "default": False,
+                    },
+                },
+            },
+            handler=self._handle_git_stage,
+        )
+
+        self._register_tool(
+            name="git_commit",
+            description="""Commit staged changes.
+
+Use this when the user says:
+- "commit this" / "commit with message X" / "save changes to git"
+- "make a commit" / "commit changes"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Commit message (required)",
+                    }
+                },
+                "required": ["message"],
+            },
+            handler=self._handle_git_commit,
+        )
+
+        self._register_tool(
+            name="git_blame",
+            description="""Show who last modified a line.
+
+Use this when the user says:
+- "who wrote this?" / "blame" / "git blame"
+- "who changed this line?" / "author of this code"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number (current line if not specified)",
+                    }
+                },
+            },
+            handler=self._handle_git_blame,
+        )
+
+        self._register_tool(
+            name="git_log",
+            description="""Show commit history.
+
+Use this when the user says:
+- "show commits" / "git log" / "commit history"
+- "recent changes" / "what was committed?"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of commits to show (default: 10)",
+                        "default": 10,
+                    }
+                },
+            },
+            handler=self._handle_git_log,
+        )
+
+        # =====================================================================
+        # Symbol Navigation (LSP)
+        # =====================================================================
+
+        self._register_tool(
+            name="list_symbols",
+            description="""List all symbols in the file.
+
+Use this when the user says:
+- "show functions" / "what's in this file?" / "document symbols"
+- "list classes" / "show methods" / "outline"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_list_symbols,
+        )
+
+        self._register_tool(
+            name="goto_symbol",
+            description="""Jump to a symbol by name.
+
+Use this when the user says:
+- "go to function X" / "find class Y" / "jump to method Z"
+- "where is X defined?" / "take me to X"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Symbol name to find and jump to",
+                    }
+                },
+                "required": ["name"],
+            },
+            handler=self._handle_goto_symbol,
+        )
+
         # =====================================================================
         # Terminal
         # =====================================================================
 
         self._register_tool(
             name="open_terminal",
-            description="Open a terminal in Neovim.",
+            description="""Open a terminal in Neovim.
+
+Use this when the user says:
+- "open terminal" / "new terminal" / "start a shell"
+- "run X in terminal" / "terminal window"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -484,7 +740,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="run_command",
-            description="Execute a Neovim command (ex command).",
+            description="""Execute a Neovim command (ex command).
+
+Use this when the user says:
+- "run vim command X" / "execute :X" / "do :X"
+- For specific commands like "%s/old/new/g" for substitution
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -501,7 +762,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="notify",
-            description="Show a notification message to the user in Neovim.",
+            description="""Show a notification message to the user in Neovim.
+
+Use this when the user says:
+- "tell me X" / "notify me" / "show a message"
+- Or when you need to communicate something to the user visually
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -524,14 +790,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_config",
-            description="Get current prism-nvim configuration.",
+            description="""Get current prism-nvim configuration.
+
+Use this when the user says:
+- "what are my settings?" / "show config" / "current configuration"
+- "is narrated mode on?" / "what's my prism config?"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_config,
         )
 
         self._register_tool(
             name="set_config",
-            description="Set prism config. narrated=true shows vim commands.",
+            description="""Set prism config. narrated=true shows vim commands.
+
+Use this when the user says:
+- "turn on narrated mode" / "teach me vim" / "show vim commands"
+- "enable auto-save" / "change settings" / "configure prism"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -554,7 +830,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="diff_preview",
-            description="Show diff preview. Original vs proposed changes side by side.",
+            description="""Show diff preview. Original vs proposed changes side by side.
+
+Use this when the user says:
+- "show me the diff" / "preview changes" / "compare before/after"
+- "what would change?" / "show side by side"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -575,7 +856,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="undo",
-            description="Undo the last change in the current buffer.",
+            description="""Undo the last change in the current buffer.
+
+Use this when the user says:
+- "undo" / "undo that" / "revert" / "go back"
+- "undo the last change" / "take that back"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -591,7 +877,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="redo",
-            description="Redo the last undone change in the current buffer.",
+            description="""Redo the last undone change in the current buffer.
+
+Use this when the user says:
+- "redo" / "redo that" / "bring it back"
+- "redo the last change" / "go forward"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -611,14 +902,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="get_references",
-            description="Find all references to the symbol under cursor.",
+            description="""Find all references to the symbol under cursor.
+
+Use this when the user says:
+- "find references" / "where is this used?" / "show usages"
+- "who calls this?" / "find all uses"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_get_references,
         )
 
         self._register_tool(
             name="rename_symbol",
-            description="Rename the symbol under cursor across all files.",
+            description="""Rename the symbol under cursor across all files.
+
+Use this when the user says:
+- "rename this to X" / "refactor name to X" / "change name to X"
+- "rename symbol" / "rename across files"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -631,7 +932,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="code_actions",
-            description="Get available code actions (quick fixes, refactors) for current position.",
+            description="""Get available code actions (quick fixes, refactors) for current position.
+
+Use this when the user says:
+- "fix this" / "quick fix" / "code actions"
+- "what can I do here?" / "suggest fixes" / "auto-fix"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -645,13 +951,49 @@ class PrismMCPServer:
             handler=self._handle_code_actions,
         )
 
+        self._register_tool(
+            name="fix_diagnostic",
+            description="""Fix the diagnostic (error/warning) at the current position.
+
+Use this when the user says:
+- "fix this error" / "fix the warning" / "resolve this issue"
+- "fix it" / "auto-fix" / "quick fix this"
+- "what's wrong here?" (returns diagnostic if no auto-fix available)
+
+This tool:
+1. Finds the diagnostic at cursor (or specified line)
+2. If a code action is available, applies the first fix
+3. If no code action, returns the diagnostic message so you can generate a fix
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number (defaults to current cursor line)",
+                    },
+                    "apply_first": {
+                        "type": "boolean",
+                        "description": "Auto-apply first code action if available (default: true)",
+                        "default": True,
+                    },
+                },
+            },
+            handler=self._handle_fix_diagnostic,
+        )
+
         # =====================================================================
         # Folding
         # =====================================================================
 
         self._register_tool(
             name="fold",
-            description="Fold code at current cursor position or specified line.",
+            description="""Fold code at current cursor position or specified line.
+
+Use this when the user says:
+- "fold this" / "collapse this" / "hide this section"
+- "fold all" / "collapse all functions"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -671,7 +1013,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="unfold",
-            description="Unfold code at current cursor position or specified line.",
+            description="""Unfold code at current cursor position or specified line.
+
+Use this when the user says:
+- "unfold this" / "expand this" / "show this section"
+- "unfold all" / "expand everything"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -695,7 +1042,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="bookmark",
-            description="Create a named bookmark at the current position.",
+            description="""Create a named bookmark at the current position.
+
+Use this when the user says:
+- "bookmark this" / "mark this spot" / "remember this location"
+- "save this position as X" / "create bookmark X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -712,7 +1064,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="goto_bookmark",
-            description="Jump to a named bookmark.",
+            description="""Jump to a named bookmark.
+
+Use this when the user says:
+- "go to bookmark X" / "jump to X" / "take me to bookmark X"
+- "back to X" / "return to the X bookmark"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -725,14 +1082,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="list_bookmarks",
-            description="List all current bookmarks.",
+            description="""List all current bookmarks.
+
+Use this when the user says:
+- "show bookmarks" / "list bookmarks" / "what bookmarks do I have?"
+- "my saved locations" / "all bookmarks"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_list_bookmarks,
         )
 
         self._register_tool(
             name="delete_bookmark",
-            description="Delete a named bookmark.",
+            description="""Delete a named bookmark.
+
+Use this when the user says:
+- "delete bookmark X" / "remove bookmark X" / "clear bookmark X"
+- "forget bookmark X" / "get rid of bookmark X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -749,7 +1116,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="comment",
-            description="Toggle comment on line(s). Works with any language.",
+            description="""Toggle comment on line(s). Works with any language.
+
+Use this when the user says:
+- "comment this" / "uncomment this" / "toggle comment"
+- "comment out this line" / "comment lines X to Y"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -768,7 +1140,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="duplicate_line",
-            description="Duplicate the current line below.",
+            description="""Duplicate the current line below.
+
+Use this when the user says:
+- "duplicate this line" / "copy this line" / "clone this line"
+- "duplicate line X" / "make a copy of this line"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -788,7 +1165,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="move_line",
-            description="Move line(s) up or down.",
+            description="""Move line(s) up or down.
+
+Use this when the user says:
+- "move this line up" / "move this line down"
+- "move line X up/down" / "shift this line up/down"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -813,7 +1195,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="delete_line",
-            description="Delete line(s) from the buffer.",
+            description="""Delete line(s) from the buffer.
+
+Use this when the user says:
+- "delete this line" / "remove this line" / "delete line X"
+- "delete lines X to Y" / "remove these lines"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -832,7 +1219,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="join_lines",
-            description="Join the current line with the next line(s).",
+            description="""Join the current line with the next line(s).
+
+Use this when the user says:
+- "join lines" / "merge lines" / "combine these lines"
+- "put these on one line" / "join with next line"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -852,14 +1244,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="select_word",
-            description="Select the word under the cursor.",
+            description="""Select the word under the cursor.
+
+Use this when the user says:
+- "select this word" / "highlight word" / "grab this word"
+- "select word under cursor"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_select_word,
         )
 
         self._register_tool(
             name="select_line",
-            description="Select entire line(s).",
+            description="""Select entire line(s).
+
+Use this when the user says:
+- "select this line" / "highlight line" / "select line X"
+- "select lines X to Y" / "grab these lines"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -878,7 +1280,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="select_block",
-            description="Select a code block (braces, parens, paragraph).",
+            description="""Select a code block (braces, parens, paragraph).
+
+Use this when the user says:
+- "select this block" / "select inside braces" / "select paragraph"
+- "grab this function body" / "select everything in parens"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -900,7 +1307,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="select_all",
-            description="Select the entire buffer content.",
+            description="""Select the entire buffer content.
+
+Use this when the user says:
+- "select all" / "select everything" / "highlight all"
+- "grab everything" / "select the whole file"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_select_all,
         )
@@ -911,7 +1323,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="indent",
-            description="Increase indentation of line(s).",
+            description="""Increase indentation of line(s).
+
+Use this when the user says:
+- "indent this" / "indent line X" / "add indent"
+- "indent lines X to Y" / "move this right"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -935,7 +1352,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="dedent",
-            description="Decrease indentation of line(s).",
+            description="""Decrease indentation of line(s).
+
+Use this when the user says:
+- "dedent this" / "unindent" / "remove indent"
+- "dedent lines X to Y" / "move this left"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -963,7 +1385,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="goto_line",
-            description="Jump to a specific line number.",
+            description="""Jump to a specific line number.
+
+Use this when the user says:
+- "go to line N" / "jump to line N" / "take me to line N"
+- "line N" / "show me line N"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -976,14 +1403,24 @@ class PrismMCPServer:
 
         self._register_tool(
             name="goto_matching",
-            description="Jump to the matching bracket/paren/brace.",
+            description="""Jump to the matching bracket/paren/brace.
+
+Use this when the user says:
+- "go to matching bracket" / "jump to matching" / "find the closing brace"
+- "go to the other bracket" / "match bracket"
+""",
             input_schema={"type": "object", "properties": {}},
             handler=self._handle_goto_matching,
         )
 
         self._register_tool(
             name="next_error",
-            description="Jump to the next diagnostic error/warning.",
+            description="""Jump to the next diagnostic error/warning.
+
+Use this when the user says:
+- "next error" / "go to next error" / "next problem"
+- "next warning" / "jump to next issue"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1000,7 +1437,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="prev_error",
-            description="Jump to the previous diagnostic error/warning.",
+            description="""Jump to the previous diagnostic error/warning.
+
+Use this when the user says:
+- "previous error" / "go to previous error" / "last problem"
+- "previous warning" / "jump to previous issue"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1017,7 +1459,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="jump_back",
-            description="Jump to previous position in jump list (like browser back).",
+            description="""Jump to previous position in jump list (like browser back).
+
+Use this when the user says:
+- "go back" / "jump back" / "previous location"
+- "back to where I was" / "return to previous spot"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1033,7 +1480,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="jump_forward",
-            description="Jump to next position in jump list (like browser forward).",
+            description="""Jump to next position in jump list (like browser forward).
+
+Use this when the user says:
+- "go forward" / "jump forward" / "next location"
+- "forward in jump list"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1053,7 +1505,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="explain_command",
-            description="Explain what a vim command does in plain English.",
+            description="""Explain what a vim command does in plain English.
+
+Use this when the user says:
+- "what does X do?" / "explain X" / "how does X work?"
+- "what's the command for X?" / "explain vim command X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1069,7 +1526,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="vim_cheatsheet",
-            description="Show a categorized cheatsheet of common vim commands.",
+            description="""Show a categorized cheatsheet of common vim commands.
+
+Use this when the user says:
+- "vim cheatsheet" / "show vim commands" / "vim help"
+- "list vim commands" / "how to use vim"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1086,7 +1548,12 @@ class PrismMCPServer:
 
         self._register_tool(
             name="suggest_command",
-            description="Given a task, suggest the best vim command(s).",
+            description="""Given a task, suggest the best vim command(s).
+
+Use this when the user says:
+- "how do I X in vim?" / "what's the vim way to X?"
+- "suggest a command for X" / "vim command to X"
+""",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -1098,6 +1565,37 @@ class PrismMCPServer:
                 "required": ["task"],
             },
             handler=self._handle_suggest_command,
+        )
+
+        # =====================================================================
+        # Trust Mode (Natural Language Control)
+        # =====================================================================
+
+        self._register_tool(
+            name="set_trust_mode",
+            description="""Change how the user wants to review your edits.
+
+Use this when the user says things like:
+- "be more careful" / "slow down" / "I want to review" → guardian
+- "that's fine" / "I trust you" → companion
+- "just do it" / "full speed" / "autopilot" → autopilot
+
+Modes:
+- guardian: User reviews every edit before it's applied (safest)
+- companion: Edits auto-apply with visual overlay, easy undo (recommended)
+- autopilot: Edits auto-apply with minimal UI (fastest)""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["guardian", "companion", "autopilot"],
+                        "description": "The trust mode to set",
+                    }
+                },
+                "required": ["mode"],
+            },
+            handler=self._handle_set_trust_mode,
         )
 
     def _register_tool(self, name: str, description: str, input_schema: dict, handler: Callable):
@@ -1408,6 +1906,161 @@ class PrismMCPServer:
         diff = self.nvim.git_diff(staged)
         return {"diff": diff}
 
+    def _handle_git_stage(self, path: Optional[str] = None, all: bool = False) -> dict:
+        """Stage files for commit."""
+        if all:
+            cmd = "git add -A"
+        else:
+            if path is None:
+                buf = self.nvim.get_current_buffer()
+                path = buf.name
+            cmd = f"git add {path}"
+
+        result = self.nvim.lua(f"""
+            local output = vim.fn.system('{cmd}')
+            local code = vim.v.shell_error
+            return {{ output = output, code = code }}
+        """)
+
+        if result.get("code", 0) != 0:
+            return {"success": False, "error": result.get("output", "Failed to stage")}
+
+        staged_target = "all changes" if all else (path or "current file")
+        return {"success": True, "message": f"Staged {staged_target}"}
+
+    def _handle_git_commit(self, message: str) -> dict:
+        """Commit staged changes."""
+        escaped_message = message.replace("'", "'\\''")
+        cmd = f"git commit -m '{escaped_message}'"
+
+        result = self.nvim.lua(f"""
+            local output = vim.fn.system([[{cmd}]])
+            local code = vim.v.shell_error
+            return {{ output = output, code = code }}
+        """)
+
+        if result.get("code", 0) != 0:
+            error_msg = result.get("output", "Failed to commit")
+            return {"success": False, "error": error_msg.strip()}
+
+        return {"success": True, "message": message}
+
+    def _handle_git_blame(self, line: Optional[int] = None) -> dict:
+        """Show who last modified a line."""
+        buf = self.nvim.get_current_buffer()
+        path = buf.name
+
+        if line is None:
+            cursor = self.nvim.get_cursor()
+            line = cursor[0]
+
+        result = self.nvim.lua(f"""
+            local output = vim.fn.system('git blame -L {line},{line} {path} 2>/dev/null')
+            local code = vim.v.shell_error
+            return {{ output = output, code = code }}
+        """)
+
+        if result.get("code", 0) != 0:
+            return {"success": False, "error": "Not in a git repository or file not tracked"}
+
+        blame_line = result.get("output", "").strip()
+        return {"success": True, "line": line, "blame": blame_line}
+
+    def _handle_git_log(self, count: int = 10) -> dict:
+        """Show commit history."""
+        result = self.nvim.lua(f"""
+            local output = vim.fn.system('git log --oneline -n {count} 2>/dev/null')
+            local code = vim.v.shell_error
+            return {{ output = output, code = code }}
+        """)
+
+        if result.get("code", 0) != 0:
+            return {"success": False, "error": "Not in a git repository"}
+
+        log = result.get("output", "").strip()
+        commits = [line for line in log.split("\n") if line]
+        return {"success": True, "commits": commits, "count": len(commits)}
+
+    def _handle_list_symbols(self) -> dict:
+        """List all symbols in the current file using LSP."""
+        result = self.nvim.lua("""
+            local symbols = {}
+            local params = { textDocument = vim.lsp.util.make_text_document_params() }
+
+            local results = vim.lsp.buf_request_sync(0, 'textDocument/documentSymbol', params, 2000)
+            if not results then
+                return { success = false, error = "No LSP response" }
+            end
+
+            local function extract_symbols(items, prefix)
+                prefix = prefix or ""
+                for _, item in ipairs(items or {}) do
+                    local kind_map = {
+                        [1] = "File", [2] = "Module", [3] = "Namespace", [4] = "Package",
+                        [5] = "Class", [6] = "Method", [7] = "Property", [8] = "Field",
+                        [9] = "Constructor", [10] = "Enum", [11] = "Interface", [12] = "Function",
+                        [13] = "Variable", [14] = "Constant", [15] = "String", [16] = "Number",
+                        [17] = "Boolean", [18] = "Array", [19] = "Object", [20] = "Key",
+                        [21] = "Null", [22] = "EnumMember", [23] = "Struct", [24] = "Event",
+                        [25] = "Operator", [26] = "TypeParameter"
+                    }
+                    local kind = kind_map[item.kind] or "Unknown"
+                    local name = item.name
+                    local range = item.range or (item.location and item.location.range)
+                    local line = range and (range.start.line + 1) or 0
+
+                    table.insert(symbols, {
+                        name = prefix .. name,
+                        kind = kind,
+                        line = line
+                    })
+
+                    if item.children then
+                        extract_symbols(item.children, prefix .. name .. ".")
+                    end
+                end
+            end
+
+            for _, res in pairs(results) do
+                if res.result then
+                    extract_symbols(res.result)
+                end
+            end
+
+            return { success = true, symbols = symbols }
+        """)
+
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error", "Failed to get symbols")}
+
+        return {"success": True, "symbols": result.get("symbols", [])}
+
+    def _handle_goto_symbol(self, name: str) -> dict:
+        """Jump to a symbol by name."""
+        symbols_result = self._handle_list_symbols()
+        if not symbols_result.get("success"):
+            return symbols_result
+
+        symbols = symbols_result.get("symbols", [])
+        name_lower = name.lower()
+        matches = [s for s in symbols if name_lower in s.get("name", "").lower()]
+
+        if not matches:
+            return {"success": False, "error": f"No symbol matching '{name}' found"}
+
+        target = matches[0]
+        line = target.get("line", 1)
+        self.nvim.goto_line(line)
+        self._narrate(f"Jump to symbol ({target.get('kind', 'symbol')} at line {line})")
+
+        return {
+            "success": True,
+            "symbol": target.get("name"),
+            "kind": target.get("kind"),
+            "line": line,
+            "matches": len(matches)
+        }
+
     def _handle_open_terminal(self, command: Optional[str] = None) -> dict:
         """Open terminal."""
         buf_id = self.nvim.open_terminal(command)
@@ -1612,6 +2265,59 @@ class PrismMCPServer:
                 self.nvim.command("lua vim.lsp.buf.code_action()")
                 self._narrate("Showing code actions (vim.lsp.buf.code_action())")
                 return {"success": True, "message": "Code action menu shown"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_fix_diagnostic(self, line: Optional[int] = None, apply_first: bool = True) -> dict:
+        """Fix diagnostic at current position."""
+        try:
+            # Get cursor position if line not specified
+            if line is None:
+                cursor = self.nvim.get_cursor()
+                line = cursor[0]
+
+            # Get diagnostics for current buffer
+            buf_id = self.nvim.call("nvim_get_current_buf")
+            all_diagnostics = self.nvim.get_diagnostics(buf_id)
+
+            # Find diagnostic at or near the specified line
+            line_diagnostics = [d for d in all_diagnostics if d.get("lnum") == line]
+
+            if not line_diagnostics:
+                # Look for diagnostics within 2 lines
+                nearby = [d for d in all_diagnostics if abs(d.get("lnum", 0) - line) <= 2]
+                if nearby:
+                    line_diagnostics = [min(nearby, key=lambda d: abs(d.get("lnum", 0) - line))]
+
+            if not line_diagnostics:
+                return {
+                    "success": False,
+                    "error": "No diagnostic found at or near line " + str(line),
+                    "all_diagnostics": len(all_diagnostics),
+                }
+
+            diagnostic = line_diagnostics[0]
+
+            if apply_first:
+                # Move cursor to diagnostic location and try code action
+                self.nvim.set_cursor(diagnostic.get("lnum", line), diagnostic.get("col", 0))
+                self.nvim.command("lua vim.lsp.buf.code_action()")
+                self._narrate("Applying code action for diagnostic (vim.lsp.buf.code_action())")
+                return {
+                    "success": True,
+                    "action": "code_action_shown",
+                    "diagnostic": diagnostic,
+                    "message": "Code action menu shown for: " + diagnostic.get("message", "unknown"),
+                }
+            else:
+                # Just return the diagnostic for Claude to fix manually
+                return {
+                    "success": True,
+                    "action": "diagnostic_returned",
+                    "diagnostic": diagnostic,
+                    "message": "Diagnostic found, no auto-fix applied",
+                }
+
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -2225,6 +2931,36 @@ class PrismMCPServer:
             "suggestions": [{"command": c, "description": d} for c, d in suggestions],
         }
 
+    def _handle_set_trust_mode(self, mode: str) -> dict:
+        """Set the trust mode for edit handling."""
+        valid_modes = {"guardian", "companion", "autopilot"}
+        if mode not in valid_modes:
+            return {"success": False, "error": f"Invalid mode: {mode}. Use: {', '.join(valid_modes)}"}
+
+        # Call the Lua function to set the mode
+        result = self.nvim.exec_lua(
+            """
+            local ok, companion = pcall(require, 'prism.companion')
+            if ok then
+                local success, err = companion.set_mode(...)
+                return { success = success, error = err }
+            else
+                return { success = false, error = 'Companion module not available' }
+            end
+            """,
+            mode,
+        )
+
+        if result and result.get("success"):
+            icons = {"guardian": "🛡️", "companion": "🤝", "autopilot": "🚀"}
+            return {
+                "success": True,
+                "mode": mode,
+                "message": f"{icons.get(mode, '')} Trust mode set to {mode}",
+            }
+        else:
+            return {"success": False, "error": result.get("error", "Unknown error")}
+
     def _narrate(self, message: str):
         """Show vim tip if narrated mode is enabled."""
         if self.config.get("narrated", False):
@@ -2490,6 +3226,60 @@ class PrismMCPServer:
             diff = result.get("diff", "")
             return diff if diff else "(no changes)"
 
+        if tool_name == "git_stage":
+            if result.get("success"):
+                return f"+ Staged: {result.get('message', 'files')}"
+            return f"x {result.get('error', 'Failed to stage')}"
+
+        if tool_name == "git_commit":
+            if result.get("success"):
+                msg = result.get("message", "")
+                return f"+ Committed: {msg[:50]}{'...' if len(msg) > 50 else ''}"
+            return f"x {result.get('error', 'Failed to commit')}"
+
+        if tool_name == "git_blame":
+            if result.get("success"):
+                line = result.get("line", 0)
+                blame = result.get("blame", "")
+                return f"L{line}: {blame}"
+            return f"x {result.get('error', 'Blame failed')}"
+
+        if tool_name == "git_log":
+            if result.get("success"):
+                commits = result.get("commits", [])
+                if not commits:
+                    return "(no commits)"
+                lines = [f"{len(commits)} commits:"]
+                for c in commits[:10]:
+                    lines.append(f"  {c}")
+                if len(commits) > 10:
+                    lines.append(f"  ... and {len(commits) - 10} more")
+                return "\n".join(lines)
+            return f"x {result.get('error', 'Log failed')}"
+
+        if tool_name == "list_symbols":
+            if result.get("success"):
+                symbols = result.get("symbols", [])
+                if not symbols:
+                    return "(no symbols found)"
+                lines = [f"{len(symbols)} symbols:"]
+                for s in symbols[:15]:
+                    lines.append(f"  L{s.get('line', 0):4} {s.get('kind', ''):12} {s.get('name', '')}")
+                if len(symbols) > 15:
+                    lines.append(f"  ... and {len(symbols) - 15} more")
+                return "\n".join(lines)
+            return f"x {result.get('error', 'Failed to get symbols')}"
+
+        if tool_name == "goto_symbol":
+            if result.get("success"):
+                name = result.get("symbol", "")
+                kind = result.get("kind", "symbol")
+                line = result.get("line", 0)
+                matches = result.get("matches", 1)
+                extra = f" ({matches} matches)" if matches > 1 else ""
+                return f"-> {kind} '{name}' at L{line}{extra}"
+            return f"x {result.get('error', 'Symbol not found')}"
+
         if tool_name == "get_config":
             cfg = result.get("config", {})
             lines = [
@@ -2662,6 +3452,12 @@ class PrismMCPServer:
             for s in suggestions:
                 lines.append(f"  {s.get('command', ''):15s} {s.get('description', '')}")
             return "\n".join(lines)
+
+        if tool_name == "set_trust_mode":
+            if result.get("success"):
+                return result.get("message", f"Mode set to {result.get('mode')}")
+            else:
+                return f"Error: {result.get('error', 'Unknown error')}"
 
         # Fallback: return JSON for unknown structures
         return json.dumps(result, indent=2, cls=BytesEncoder)

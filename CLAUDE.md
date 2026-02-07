@@ -207,6 +207,143 @@ The `run_command` tool automatically handles window focus. It switches to the ed
 - `suggest_command(task)` -- Suggest vim command for a task
 - `vim_cheatsheet(category?)` -- Show vim commands
 
+## Natural Language Interface
+
+Prism tools are designed to respond to natural language. Claude maps user requests to MCP tools automatically.
+
+### Navigation
+
+| User says | Tool called |
+|-----------|-------------|
+| "go to line 42" / "jump to line 42" | `goto_line(42)` |
+| "open main.lua" / "show me main.lua" | `open_file("main.lua")` |
+| "go to definition" / "where is this defined?" | `goto_definition` |
+| "next error" / "go to next problem" | `next_error` |
+| "previous error" / "last warning" | `prev_error` |
+| "go back" / "previous location" | `jump_back` |
+| "go forward" | `jump_forward` |
+| "go to bookmark X" / "jump to X" | `goto_bookmark("X")` |
+| "go to matching bracket" | `goto_matching` |
+
+### File Operations
+
+| User says | Tool called |
+|-----------|-------------|
+| "save" / "save this" / "write it" | `save_file` |
+| "close this" / "close the file" | `close_file` |
+| "create X" / "new file called X" | `create_file("X")` |
+| "what files are open?" / "list buffers" | `get_open_files` |
+| "what file is this?" / "where am I?" | `get_current_file` |
+
+### Reading Content
+
+| User says | Tool called |
+|-----------|-------------|
+| "read X" / "what's in this file?" | `get_buffer_content` |
+| "show lines 10 to 20" / "read lines 10-20" | `get_buffer_lines(start=10, end=20)` |
+| "what's selected?" / "get the selection" | `get_selection` |
+
+### Editing
+
+| User says | Tool called |
+|-----------|-------------|
+| "replace X with Y" / "change X to Y" | `search_and_replace("X", "Y")` |
+| "find X" / "search for X" | `search_in_file("X")` |
+| "comment this" / "toggle comment" | `comment` |
+| "duplicate this line" | `duplicate_line` |
+| "delete this line" / "remove line 5" | `delete_line` |
+| "move this line up/down" | `move_line("up")` / `move_line("down")` |
+| "join lines" / "merge lines" | `join_lines` |
+| "indent this" / "add indent" | `indent` |
+| "dedent this" / "remove indent" | `dedent` |
+| "format this" / "prettify" | `format_file` |
+| "undo" / "undo that" / "go back" | `undo` |
+| "redo" / "bring it back" | `redo` |
+
+### Selection
+
+| User says | Tool called |
+|-----------|-------------|
+| "select this word" | `select_word` |
+| "select this line" / "select lines 5-10" | `select_line` |
+| "select this block" / "select inside braces" | `select_block` |
+| "select all" / "select everything" | `select_all` |
+
+### LSP / Code Intelligence
+
+| User says | Tool called |
+|-----------|-------------|
+| "show errors" / "any problems?" / "what's wrong?" | `get_diagnostics` |
+| "fix this" / "quick fix" / "auto-fix" | `code_actions(apply_first=true)` |
+| "fix this error" / "resolve this issue" | `fix_diagnostic` |
+| "what is this?" / "show documentation" | `get_hover_info` |
+| "find references" / "where is this used?" | `get_references` |
+| "rename this to X" / "refactor name to X" | `rename_symbol("X")` |
+| "show functions" / "outline" / "document symbols" | `document_symbols` |
+| "go to function X" / "find class Y" | `goto_symbol("X")` |
+
+### Git Operations
+
+| User says | Tool called |
+|-----------|-------------|
+| "git status" / "what's changed?" | `git_status` |
+| "show diff" / "what did I modify?" | `git_diff` |
+| "stage this file" / "add to commit" | `git_stage` |
+| "stage all changes" | `git_stage(all=true)` |
+| "commit this" / "commit with message X" | `git_commit("X")` |
+| "show commits" / "git log" | `git_log` |
+| "who wrote this?" / "blame" | `git_blame` |
+
+### Trust Mode / Editing Style
+
+| User says | Tool called |
+|-----------|-------------|
+| "be more careful" / "slow down" / "I want to review" | `set_trust_mode("guardian")` |
+| "that's fine" / "I trust you" | `set_trust_mode("companion")` |
+| "just do it" / "full speed" / "autopilot" | `set_trust_mode("autopilot")` |
+
+Trust modes:
+- **guardian**: User reviews every edit before it's applied (safest)
+- **companion**: Edits auto-apply with visual overlay, easy undo (recommended)
+- **autopilot**: Edits auto-apply with minimal UI (fastest)
+
+### Learning Vim
+
+| User says | Tool called |
+|-----------|-------------|
+| "teach me vim" / "turn on narrated mode" | `set_config(narrated=true)` |
+| "what does X do?" / "explain vim command X" | `explain_command("X")` |
+| "how do I X in vim?" / "vim way to X" | `suggest_command("X")` |
+| "vim cheatsheet" / "show vim commands" | `vim_cheatsheet` |
+
+### Bookmarks
+
+| User says | Tool called |
+|-----------|-------------|
+| "bookmark this" / "mark this spot as X" | `bookmark("X")` |
+| "show bookmarks" / "list bookmarks" | `list_bookmarks` |
+| "delete bookmark X" | `delete_bookmark("X")` |
+
+### Windows
+
+| User says | Tool called |
+|-----------|-------------|
+| "split the window" / "vertical split" | `split_window(vertical=true)` |
+| "horizontal split" | `split_window(vertical=false)` |
+| "close this window" / "close the split" | `close_window` |
+| "what windows are open?" | `get_windows` |
+
+### Other
+
+| User says | Tool called |
+|-----------|-------------|
+| "fold this" / "collapse this" | `fold` |
+| "unfold this" / "expand this" | `unfold` |
+| "show me the diff" / "preview changes" | `diff_preview` |
+| "tell me X" / "notify me" | `notify("X")` |
+| "run vim command X" / "execute :X" | `run_command("X")` |
+| "open terminal" / "new terminal" | `open_terminal` |
+
 ## Narrated Mode (Learn Vim)
 
 Enable narrated mode to see vim commands as they execute:

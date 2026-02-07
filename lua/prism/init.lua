@@ -191,6 +191,22 @@ local function setup_commands()
   vim.api.nvim_create_user_command("PrismFreeze", function()
     M.freeze()
   end, { desc = "Toggle freeze (guardian mode)" })
+
+  vim.api.nvim_create_user_command("PrismMode", function(opts)
+    local mode = opts.args
+    if mode == "" then
+      -- Show picker
+      M.mode_picker()
+    else
+      M.set_mode(mode)
+    end
+  end, {
+    nargs = "?",
+    complete = function()
+      return { "guardian", "companion", "autopilot" }
+    end,
+    desc = "Set trust mode (guardian/companion/autopilot)",
+  })
 end
 
 --- Register keymaps from config
@@ -584,6 +600,54 @@ function M.freeze()
       companion.freeze()
     end
   end
+end
+
+--- Set trust mode
+--- @param mode string "guardian" | "companion" | "autopilot"
+--- @return boolean success
+--- @return string|nil error
+function M.set_mode(mode)
+  local ok, companion = pcall(require, "prism.companion")
+  if ok then
+    return companion.set_mode(mode)
+  end
+  return false, "Companion module not available"
+end
+
+--- Get current trust mode
+--- @return string mode
+function M.get_mode()
+  local ok, companion = pcall(require, "prism.companion")
+  if ok then
+    return companion.get_mode()
+  end
+  return "companion"
+end
+
+--- Show mode picker UI
+function M.mode_picker()
+  local ok, companion = pcall(require, "prism.companion")
+  if not ok then
+    vim.notify("[prism.nvim] Companion module not available", vim.log.levels.WARN)
+    return
+  end
+
+  local modes = companion.get_modes()
+  local current = companion.get_mode()
+
+  local items = {}
+  for _, m in ipairs(modes) do
+    local marker = m.id == current and " ✓" or ""
+    table.insert(items, string.format("%s %s%s - %s", m.icon, m.name, marker, m.desc))
+  end
+
+  vim.ui.select(items, {
+    prompt = "Select trust mode:",
+  }, function(choice, idx)
+    if choice and idx then
+      companion.set_mode(modes[idx].id)
+    end
+  end)
 end
 
 --- Check if plugin is initialized

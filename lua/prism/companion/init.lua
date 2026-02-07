@@ -284,6 +284,52 @@ function M.unfreeze()
 	M.write_trust_config()
 end
 
+--- Set trust mode at runtime
+--- @param mode string "guardian" | "companion" | "autopilot"
+--- @return boolean success
+--- @return string|nil error
+function M.set_mode(mode)
+	local valid_modes = { guardian = true, companion = true, autopilot = true }
+	if not valid_modes[mode] then
+		return false, "Invalid mode: " .. tostring(mode) .. ". Must be guardian, companion, or autopilot."
+	end
+
+	-- Update config at runtime
+	local current_config = config.get()
+	current_config.trust = current_config.trust or {}
+	current_config.trust.mode = mode
+
+	-- Clear frozen state when explicitly setting mode
+	state.frozen = false
+
+	-- Notify user with mode-specific message
+	local icons = { guardian = "🛡️", companion = "🤝", autopilot = "🚀" }
+	local descriptions = {
+		guardian = "Manual review required for all edits",
+		companion = "Auto-accept with visual overlays",
+		autopilot = "Full auto-accept, minimal UI",
+	}
+	vim.notify(
+		string.format("%s Trust mode: %s - %s", icons[mode], mode, descriptions[mode]),
+		vim.log.levels.INFO
+	)
+
+	event.emit("companion:mode_changed", { mode = mode })
+	M.write_trust_config()
+
+	return true, nil
+end
+
+--- Get list of available modes
+--- @return table modes
+function M.get_modes()
+	return {
+		{ id = "guardian", name = "Guardian", desc = "Manual review for all edits", icon = "🛡️" },
+		{ id = "companion", name = "Companion", desc = "Auto-accept with overlays", icon = "🤝" },
+		{ id = "autopilot", name = "Autopilot", desc = "Full auto, minimal UI", icon = "🚀" },
+	}
+end
+
 --- Write trust config to JSON file for Python hook to read
 function M.write_trust_config()
 	local trust_config = {

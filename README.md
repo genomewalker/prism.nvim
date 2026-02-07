@@ -98,7 +98,35 @@ Done. Replaced in 12 files.
 | `:ClaudeNav` | Pick from changed files |
 | `:ClaudeClear` | Clear changed files list |
 
-## MCP Tools (40+)
+## Natural Language Interface
+
+Talk to Claude naturally - it understands your intent and uses the right tools:
+
+| You say | Claude does |
+|---------|-------------|
+| "go to line 42" | `goto_line(42)` |
+| "show me errors" | `get_diagnostics()` |
+| "fix this error" | `fix_diagnostic()` |
+| "be more careful" | `set_trust_mode("guardian")` |
+| "teach me vim" | `set_config(narrated=true)` |
+| "commit this with message X" | `git_commit("X")` |
+| "who wrote this line?" | `git_blame()` |
+| "show me all functions" | `list_symbols()` |
+| "replace foo with bar" | `search_and_replace("foo", "bar")` |
+
+### Trust Modes
+
+Control how Claude handles edits:
+
+| Mode | Description | Trigger phrase |
+|------|-------------|----------------|
+| Guardian | Review every edit | "be more careful", "slow down" |
+| Companion | Auto-accept with overlay | "I trust you", "that's fine" |
+| Autopilot | Full auto, minimal UI | "just do it", "full speed" |
+
+Switch modes: `:PrismMode` or just tell Claude naturally.
+
+## MCP Tools (55+)
 
 Prism gives Claude direct control of Neovim. No vim knowledge required.
 
@@ -137,6 +165,25 @@ Now every action shows the equivalent vim command:
 📚 Indent line (>>)
 📚 Jump to line 50 (:50)
 ```
+
+### Git Operations
+
+| Tool | What You Say |
+|------|--------------|
+| `git_status` | "What's changed?" |
+| `git_diff` | "Show the diff" |
+| `git_stage` | "Stage this file" |
+| `git_commit` | "Commit with message X" |
+| `git_blame` | "Who wrote this?" |
+| `git_log` | "Show recent commits" |
+
+### Symbol Navigation
+
+| Tool | What You Say |
+|------|--------------|
+| `list_symbols` | "Show me all functions" |
+| `goto_symbol` | "Go to function X" |
+| `fix_diagnostic` | "Fix this error" |
 
 ### Ask About Vim
 
