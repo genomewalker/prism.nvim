@@ -292,21 +292,14 @@ Only append if not already present:
 # Prism.nvim helpers
 nvc() {
   local claude_args=""
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --model|--continue|--resume|-c|-r)
-        if [[ "$1" == "--model" ]]; then
-          claude_args="$claude_args $1 $2"
-          shift 2
-        else
-          claude_args="$claude_args $1"
-          shift
-        fi
-        ;;
-      *)
-        break
-        ;;
-    esac
+  while [[ $# -gt 0 && "$1" == -* ]]; do
+    if [[ "$1" == "--model" || "$1" == "--allowedTools" || "$1" == "--disallowedTools" ]]; then
+      claude_args="$claude_args $1 $2"
+      shift 2
+    else
+      claude_args="$claude_args $1"
+      shift
+    fi
   done
   CLAUDE_ARGS="$claude_args" nvim "$@"
 }
