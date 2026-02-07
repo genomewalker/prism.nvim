@@ -244,6 +244,23 @@ EOF
 fi
 
 # ============================================================================
+# Step 4b: Link CLAUDE.md to ~/.claude/rules/ (auto-loaded by Claude Code)
+# ============================================================================
+step "Linking CLAUDE.md to rules directory..."
+
+RULES_DIR="$CLAUDE_DIR/rules"
+RULES_LINK="$RULES_DIR/prism-nvim.md"
+
+mkdir -p "$RULES_DIR"
+
+if [ -f "$PRISM_DIR/CLAUDE.md" ]; then
+    ln -sf "$PRISM_DIR/CLAUDE.md" "$RULES_LINK"
+    info "Linked CLAUDE.md → ~/.claude/rules/prism-nvim.md"
+else
+    warn "CLAUDE.md not found in $PRISM_DIR"
+fi
+
+# ============================================================================
 # Step 5: Neovim Config
 # ============================================================================
 step "Checking Neovim configuration..."
@@ -383,7 +400,7 @@ echo ""
 echo "  What was installed:"
 echo "    ✓ Neovim plugin (native packages)"
 echo "    ✓ Claude Code MCP server config"
-echo "    ✓ CLAUDE.md with MCP instructions"
+echo "    ✓ CLAUDE.md → ~/.claude/rules/prism-nvim.md"
 echo "    ✓ Neovim config file"
 echo "    ✓ Shell function (nvc)"
 echo ""
