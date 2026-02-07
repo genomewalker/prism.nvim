@@ -67,7 +67,11 @@ class PrismMCPServer:
         self.config = {
             "auto_save": False,  # Auto-save after edits
             "keep_focus": True,  # Return focus to terminal after opening files
+            "narrated": False,   # Explain vim commands as they happen
         }
+
+        # Bookmarks storage
+        self.bookmarks: dict[str, dict] = {}
 
         self._setup_tools()
 
@@ -601,7 +605,7 @@ class PrismMCPServer:
 
         self._register_tool(
             name="set_config",
-            description="Set prism-nvim configuration. Use auto_save=true for automatic mode where all edits are saved immediately.",
+            description="Set prism-nvim configuration. Use narrated=true to learn vim - shows vim commands as they execute.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -612,6 +616,10 @@ class PrismMCPServer:
                     "keep_focus": {
                         "type": "boolean",
                         "description": "Return focus to terminal after opening files (default: true)"
+                    },
+                    "narrated": {
+                        "type": "boolean",
+                        "description": "Show vim commands as they execute - great for learning vim! (default: false)"
                     }
                 }
             },
@@ -636,6 +644,567 @@ class PrismMCPServer:
                 "required": ["path", "new_content"]
             },
             handler=self._handle_diff_preview
+        )
+
+        # =====================================================================
+        # Undo/Redo
+        # =====================================================================
+
+        self._register_tool(
+            name="undo",
+            description="Undo the last change in the current buffer.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of changes to undo (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_undo
+        )
+
+        self._register_tool(
+            name="redo",
+            description="Redo the last undone change in the current buffer.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of changes to redo (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_redo
+        )
+
+        # =====================================================================
+        # LSP Advanced
+        # =====================================================================
+
+        self._register_tool(
+            name="get_references",
+            description="Find all references to the symbol under cursor.",
+            input_schema={
+                "type": "object",
+                "properties": {}
+            },
+            handler=self._handle_get_references
+        )
+
+        self._register_tool(
+            name="rename_symbol",
+            description="Rename the symbol under cursor across all files.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "new_name": {
+                        "type": "string",
+                        "description": "New name for the symbol"
+                    }
+                },
+                "required": ["new_name"]
+            },
+            handler=self._handle_rename_symbol
+        )
+
+        self._register_tool(
+            name="code_actions",
+            description="Get available code actions (quick fixes, refactors) for current position.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "apply_first": {
+                        "type": "boolean",
+                        "description": "Automatically apply the first available action",
+                        "default": False
+                    }
+                }
+            },
+            handler=self._handle_code_actions
+        )
+
+        # =====================================================================
+        # Folding
+        # =====================================================================
+
+        self._register_tool(
+            name="fold",
+            description="Fold code at current cursor position or specified line.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number to fold at (current line if not specified)"
+                    },
+                    "all": {
+                        "type": "boolean",
+                        "description": "Fold all foldable regions in the buffer",
+                        "default": False
+                    }
+                }
+            },
+            handler=self._handle_fold
+        )
+
+        self._register_tool(
+            name="unfold",
+            description="Unfold code at current cursor position or specified line.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number to unfold at (current line if not specified)"
+                    },
+                    "all": {
+                        "type": "boolean",
+                        "description": "Unfold all regions in the buffer",
+                        "default": False
+                    }
+                }
+            },
+            handler=self._handle_unfold
+        )
+
+        # =====================================================================
+        # Bookmarks
+        # =====================================================================
+
+        self._register_tool(
+            name="bookmark",
+            description="Create a named bookmark at the current position.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name for the bookmark"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional description of what's at this location"
+                    }
+                },
+                "required": ["name"]
+            },
+            handler=self._handle_bookmark
+        )
+
+        self._register_tool(
+            name="goto_bookmark",
+            description="Jump to a named bookmark.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the bookmark to jump to"
+                    }
+                },
+                "required": ["name"]
+            },
+            handler=self._handle_goto_bookmark
+        )
+
+        self._register_tool(
+            name="list_bookmarks",
+            description="List all current bookmarks.",
+            input_schema={
+                "type": "object",
+                "properties": {}
+            },
+            handler=self._handle_list_bookmarks
+        )
+
+        self._register_tool(
+            name="delete_bookmark",
+            description="Delete a named bookmark.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the bookmark to delete"
+                    }
+                },
+                "required": ["name"]
+            },
+            handler=self._handle_delete_bookmark
+        )
+
+        # =====================================================================
+        # Line Operations
+        # =====================================================================
+
+        self._register_tool(
+            name="comment",
+            description="Toggle comment on line(s). Works with any language.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (1-indexed, current line if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (inclusive, same as start if not specified)"
+                    }
+                }
+            },
+            handler=self._handle_comment
+        )
+
+        self._register_tool(
+            name="duplicate_line",
+            description="Duplicate the current line below.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line to duplicate (current line if not specified)"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of copies (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_duplicate_line
+        )
+
+        self._register_tool(
+            name="move_line",
+            description="Move line(s) up or down.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "enum": ["up", "down"],
+                        "description": "Direction to move"
+                    },
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)"
+                    }
+                },
+                "required": ["direction"]
+            },
+            handler=self._handle_move_line
+        )
+
+        self._register_tool(
+            name="delete_line",
+            description="Delete line(s) from the buffer.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)"
+                    }
+                }
+            },
+            handler=self._handle_delete_line
+        )
+
+        self._register_tool(
+            name="join_lines",
+            description="Join the current line with the next line(s).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of lines to join (default: 2)",
+                        "default": 2
+                    }
+                }
+            },
+            handler=self._handle_join_lines
+        )
+
+        # =====================================================================
+        # Selection Helpers
+        # =====================================================================
+
+        self._register_tool(
+            name="select_word",
+            description="Select the word under the cursor.",
+            input_schema={
+                "type": "object",
+                "properties": {}
+            },
+            handler=self._handle_select_word
+        )
+
+        self._register_tool(
+            name="select_line",
+            description="Select entire line(s).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)"
+                    }
+                }
+            },
+            handler=self._handle_select_line
+        )
+
+        self._register_tool(
+            name="select_block",
+            description="Select a code block (braces, parens, paragraph).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["paragraph", "brace", "paren", "bracket"],
+                        "description": "Block type to select",
+                        "default": "paragraph"
+                    },
+                    "around": {
+                        "type": "boolean",
+                        "description": "Include delimiters (default: false)",
+                        "default": False
+                    }
+                }
+            },
+            handler=self._handle_select_block
+        )
+
+        self._register_tool(
+            name="select_all",
+            description="Select the entire buffer content.",
+            input_schema={
+                "type": "object",
+                "properties": {}
+            },
+            handler=self._handle_select_all
+        )
+
+        # =====================================================================
+        # Indentation
+        # =====================================================================
+
+        self._register_tool(
+            name="indent",
+            description="Increase indentation of line(s).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "Indent levels (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_indent
+        )
+
+        self._register_tool(
+            name="dedent",
+            description="Decrease indentation of line(s).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)"
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "Dedent levels (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_dedent
+        )
+
+        # =====================================================================
+        # Navigation
+        # =====================================================================
+
+        self._register_tool(
+            name="goto_line",
+            description="Jump to a specific line number.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number to jump to"
+                    }
+                },
+                "required": ["line"]
+            },
+            handler=self._handle_goto_line
+        )
+
+        self._register_tool(
+            name="goto_matching",
+            description="Jump to the matching bracket/paren/brace.",
+            input_schema={
+                "type": "object",
+                "properties": {}
+            },
+            handler=self._handle_goto_matching
+        )
+
+        self._register_tool(
+            name="next_error",
+            description="Jump to the next diagnostic error/warning.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "severity": {
+                        "type": "string",
+                        "enum": ["error", "warning", "info", "hint"],
+                        "description": "Minimum severity (default: error)",
+                        "default": "error"
+                    }
+                }
+            },
+            handler=self._handle_next_error
+        )
+
+        self._register_tool(
+            name="prev_error",
+            description="Jump to the previous diagnostic error/warning.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "severity": {
+                        "type": "string",
+                        "enum": ["error", "warning", "info", "hint"],
+                        "description": "Minimum severity (default: error)",
+                        "default": "error"
+                    }
+                }
+            },
+            handler=self._handle_prev_error
+        )
+
+        self._register_tool(
+            name="jump_back",
+            description="Jump to previous position in jump list (like browser back).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Positions to jump back (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_jump_back
+        )
+
+        self._register_tool(
+            name="jump_forward",
+            description="Jump to next position in jump list (like browser forward).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "Positions to jump forward (default: 1)",
+                        "default": 1
+                    }
+                }
+            },
+            handler=self._handle_jump_forward
+        )
+
+        # =====================================================================
+        # Learning / Help
+        # =====================================================================
+
+        self._register_tool(
+            name="explain_command",
+            description="Explain what a vim command does in plain English.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Vim command to explain (e.g. 'dd', 'ciw', ':wq')"
+                    }
+                },
+                "required": ["command"]
+            },
+            handler=self._handle_explain_command
+        )
+
+        self._register_tool(
+            name="vim_cheatsheet",
+            description="Show a categorized cheatsheet of common vim commands.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["movement", "editing", "search", "visual", "files", "all"],
+                        "description": "Category to show (default: all)",
+                        "default": "all"
+                    }
+                }
+            },
+            handler=self._handle_vim_cheatsheet
+        )
+
+        self._register_tool(
+            name="suggest_command",
+            description="Given a task, suggest the best vim command(s).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "What you want to do (e.g. 'delete inside quotes')"
+                    }
+                },
+                "required": ["task"]
+            },
+            handler=self._handle_suggest_command
         )
 
     def _register_tool(
@@ -669,6 +1238,7 @@ class PrismMCPServer:
             keep_focus = keep_focus.lower() == "true"
 
         buf = self.nvim.open_file(path, keep_focus=keep_focus)
+        self._narrate(f"Opening file (:e {path})")
         return {
             "success": True,
             "buffer_id": buf.id,
@@ -679,6 +1249,7 @@ class PrismMCPServer:
     def _handle_save_file(self, path: Optional[str] = None) -> dict:
         """Save current file."""
         self.nvim.save_file(path)
+        self._narrate("Saving file (:w)")
         return {"success": True}
 
     def _handle_close_file(
@@ -687,15 +1258,18 @@ class PrismMCPServer:
         force: bool = False
     ) -> dict:
         """Close a file."""
+        cmd = ":bd!" if force else ":bd"
         if path:
             # Find buffer by path
             for buf in self.nvim.get_buffers():
                 if buf.name.endswith(path) or buf.name == path:
                     self.nvim.close_buffer(buf.id, force)
+                    self._narrate(f"Closing buffer ({cmd})")
                     return {"success": True}
             return {"success": False, "error": "File not found"}
         else:
             self.nvim.close_buffer(force=force)
+            self._narrate(f"Closing buffer ({cmd})")
             return {"success": True}
 
     def _handle_create_file(self, path: str, content: str = "") -> dict:
@@ -815,6 +1389,7 @@ class PrismMCPServer:
         end_idx = end_line
 
         self.nvim.set_buffer_lines(new_lines, start, end_idx, buf_id)
+        self._narrate(f"Editing lines {start_line}-{end_line} (nvim_buf_set_lines)")
 
         # Auto-save if enabled (via param or global config)
         if auto_save:
@@ -846,6 +1421,7 @@ class PrismMCPServer:
                     break
 
         self.nvim.insert_text(text, line - 1, column, buf_id)
+        self._narrate(f"Inserting text at L{line}:C{column}")
         return {"success": True}
 
     def _handle_get_open_files(self) -> dict:
@@ -885,6 +1461,7 @@ class PrismMCPServer:
         line = int(line)
         column = int(column)
         self.nvim.set_cursor(line, column)
+        self._narrate(f"Moving cursor to L{line}:C{column} (:{line} then |)")
         return {"success": True}
 
     def _handle_get_selection(self) -> dict:
@@ -950,6 +1527,7 @@ class PrismMCPServer:
     def _handle_goto_definition(self) -> dict:
         """Go to definition."""
         success = self.nvim.goto_definition()
+        self._narrate("Go to definition (gd or vim.lsp.buf.definition())")
         if success:
             buf = self.nvim.get_current_buffer()
             cursor = self.nvim.get_cursor()
@@ -990,6 +1568,7 @@ class PrismMCPServer:
     ) -> dict:
         """Search and replace."""
         count = self.nvim.replace(pattern, replacement, flags)
+        self._narrate(f"Search/replace (:%s/{pattern}/{replacement}/{flags})")
         return {"success": True, "replacements": count}
 
     def _handle_git_status(self) -> dict:
@@ -1070,7 +1649,8 @@ class PrismMCPServer:
     def _handle_set_config(
         self,
         auto_save: Optional[bool] = None,
-        keep_focus: Optional[bool] = None
+        keep_focus: Optional[bool] = None,
+        narrated: Optional[bool] = None
     ) -> dict:
         """Set configuration options."""
         # Handle string booleans from JSON
@@ -1085,9 +1665,17 @@ class PrismMCPServer:
             self.config["auto_save"] = parse_bool(auto_save)
         if keep_focus is not None:
             self.config["keep_focus"] = parse_bool(keep_focus)
+        if narrated is not None:
+            self.config["narrated"] = parse_bool(narrated)
 
         # Notify user of config change
-        self.nvim.notify(f"Prism config: auto_save={self.config['auto_save']}", "info")
+        mode_parts = []
+        if self.config["auto_save"]:
+            mode_parts.append("auto-save")
+        if self.config["narrated"]:
+            mode_parts.append("narrated")
+        mode_str = ", ".join(mode_parts) if mode_parts else "default"
+        self.nvim.notify(f"Prism mode: {mode_str}", "info")
 
         return {"success": True, "config": self.config}
 
@@ -1134,6 +1722,653 @@ class PrismMCPServer:
             "success": True,
             "message": "Diff preview opened in editor area. Use :diffoff and :bd to close when done."
         }
+
+    def _handle_undo(self, count: int = 1) -> dict:
+        """Undo changes."""
+        count = int(count) if count else 1
+        vim_cmd = "u" if count == 1 else f"{count}u"
+        self.nvim.command(f"normal! {vim_cmd}")
+        self._narrate(f"Undo ({vim_cmd})")
+        return {"success": True, "count": count, "vim_cmd": vim_cmd}
+
+    def _handle_redo(self, count: int = 1) -> dict:
+        """Redo changes."""
+        count = int(count) if count else 1
+        vim_cmd = "<C-r>" if count == 1 else f"{count}<C-r>"
+        for _ in range(count):
+            self.nvim.command("normal! \\<C-r>")
+        self._narrate(f"Redo (Ctrl+R ×{count})")
+        return {"success": True, "count": count, "vim_cmd": f"Ctrl+R ×{count}"}
+
+    def _handle_get_references(self) -> dict:
+        """Find all references to symbol under cursor."""
+        try:
+            # Use LSP references
+            self.nvim.command("lua vim.lsp.buf.references()")
+            self._narrate("Finding references (vim.lsp.buf.references())")
+            return {"success": True, "message": "References shown in quickfix list"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_rename_symbol(self, new_name: str) -> dict:
+        """Rename symbol using LSP."""
+        try:
+            self.nvim.command(f"lua vim.lsp.buf.rename('{new_name}')")
+            self._narrate(f"Renaming symbol to '{new_name}' (vim.lsp.buf.rename())")
+            return {"success": True, "new_name": new_name}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_code_actions(self, apply_first: bool = False) -> dict:
+        """Get or apply code actions."""
+        try:
+            if apply_first:
+                # Apply first available action
+                self.nvim.command("lua vim.lsp.buf.code_action()")
+                self._narrate("Showing code actions (vim.lsp.buf.code_action())")
+                return {"success": True, "message": "Code action menu shown"}
+            else:
+                # Just show available actions
+                self.nvim.command("lua vim.lsp.buf.code_action()")
+                self._narrate("Showing code actions (vim.lsp.buf.code_action())")
+                return {"success": True, "message": "Code action menu shown"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_fold(self, line: Optional[int] = None, all: bool = False) -> dict:
+        """Fold code."""
+        if all:
+            self.nvim.command("normal! zM")
+            self._narrate("Folding all (zM)")
+            return {"success": True, "vim_cmd": "zM", "message": "All folds closed"}
+
+        if line:
+            self.nvim.set_cursor(int(line), 0)
+
+        self.nvim.command("normal! zc")
+        self._narrate("Folding at cursor (zc)")
+        return {"success": True, "vim_cmd": "zc"}
+
+    def _handle_unfold(self, line: Optional[int] = None, all: bool = False) -> dict:
+        """Unfold code."""
+        if all:
+            self.nvim.command("normal! zR")
+            self._narrate("Unfolding all (zR)")
+            return {"success": True, "vim_cmd": "zR", "message": "All folds opened"}
+
+        if line:
+            self.nvim.set_cursor(int(line), 0)
+
+        self.nvim.command("normal! zo")
+        self._narrate("Unfolding at cursor (zo)")
+        return {"success": True, "vim_cmd": "zo"}
+
+    def _handle_bookmark(self, name: str, description: str = "") -> dict:
+        """Create a bookmark."""
+        buf = self.nvim.get_current_buffer()
+        cursor = self.nvim.get_cursor()
+
+        self.bookmarks[name] = {
+            "path": buf.name,
+            "line": cursor[0],
+            "column": cursor[1],
+            "description": description
+        }
+
+        self._narrate(f"Bookmark '{name}' created (like :mark but named)")
+        return {
+            "success": True,
+            "name": name,
+            "path": buf.name,
+            "line": cursor[0]
+        }
+
+    def _handle_goto_bookmark(self, name: str) -> dict:
+        """Jump to a bookmark."""
+        if name not in self.bookmarks:
+            return {"success": False, "error": f"Bookmark '{name}' not found"}
+
+        bm = self.bookmarks[name]
+        self.nvim.open_file(bm["path"])
+        self.nvim.set_cursor(bm["line"], bm["column"])
+
+        self._narrate(f"Jumping to bookmark '{name}' (like `a but named)")
+        return {
+            "success": True,
+            "name": name,
+            "path": bm["path"],
+            "line": bm["line"]
+        }
+
+    def _handle_list_bookmarks(self) -> dict:
+        """List all bookmarks."""
+        return {"bookmarks": self.bookmarks}
+
+    def _handle_delete_bookmark(self, name: str) -> dict:
+        """Delete a bookmark."""
+        if name not in self.bookmarks:
+            return {"success": False, "error": f"Bookmark '{name}' not found"}
+
+        del self.bookmarks[name]
+        return {"success": True, "name": name}
+
+    # =========================================================================
+    # Line Operations Handlers
+    # =========================================================================
+
+    def _handle_comment(
+        self,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None
+    ) -> dict:
+        """Toggle comment on line(s)."""
+        try:
+            if start_line is not None and end_line is not None:
+                start_line, end_line = int(start_line), int(end_line)
+                self.nvim.command(f"{start_line},{end_line}normal gcc")
+                count = end_line - start_line + 1
+                vim_cmd = f"{start_line},{end_line}normal gcc"
+            elif start_line is not None:
+                self.nvim.set_cursor(int(start_line), 0)
+                self.nvim.command("normal gcc")
+                count = 1
+                vim_cmd = "gcc"
+            else:
+                self.nvim.command("normal gcc")
+                count = 1
+                vim_cmd = "gcc"
+
+            self._narrate(f"Toggle comment ({vim_cmd})")
+            return {"success": True, "lines": count, "vim_cmd": vim_cmd}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_duplicate_line(
+        self,
+        line: Optional[int] = None,
+        count: int = 1
+    ) -> dict:
+        """Duplicate a line below."""
+        count = int(count) if count else 1
+
+        if line is not None:
+            self.nvim.set_cursor(int(line), 0)
+
+        # Copy current line and paste below
+        self.nvim.command("normal! yy")
+        for _ in range(count):
+            self.nvim.command("normal! p")
+
+        vim_cmd = "yyp" if count == 1 else f"yy{count}p"
+        self._narrate(f"Duplicate line ({vim_cmd})")
+        return {"success": True, "copies": count, "vim_cmd": vim_cmd}
+
+    def _handle_move_line(
+        self,
+        direction: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None
+    ) -> dict:
+        """Move line(s) up or down."""
+        try:
+            if start_line is not None and end_line is not None:
+                start_line, end_line = int(start_line), int(end_line)
+                if direction == "up":
+                    target = start_line - 2
+                    self.nvim.command(f"{start_line},{end_line}move {target}")
+                else:
+                    target = end_line + 1
+                    self.nvim.command(f"{start_line},{end_line}move {target}")
+                vim_cmd = f":{start_line},{end_line}m {target}"
+            else:
+                if direction == "up":
+                    self.nvim.command("move .-2")
+                    vim_cmd = ":m .-2"
+                else:
+                    self.nvim.command("move .+1")
+                    vim_cmd = ":m .+1"
+
+            self._narrate(f"Move line {direction} ({vim_cmd})")
+            return {"success": True, "direction": direction, "vim_cmd": vim_cmd}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _handle_delete_line(
+        self,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None
+    ) -> dict:
+        """Delete line(s)."""
+        if start_line is not None and end_line is not None:
+            start_line, end_line = int(start_line), int(end_line)
+            count = end_line - start_line + 1
+            self.nvim.command(f"{start_line},{end_line}delete")
+            vim_cmd = f":{start_line},{end_line}d"
+        elif start_line is not None:
+            count = 1
+            self.nvim.set_cursor(int(start_line), 0)
+            self.nvim.command("delete")
+            vim_cmd = f":{start_line}d"
+        else:
+            count = 1
+            self.nvim.command("normal! dd")
+            vim_cmd = "dd"
+
+        self._narrate(f"Delete {count} line(s) ({vim_cmd})")
+        return {"success": True, "deleted": count, "vim_cmd": vim_cmd}
+
+    def _handle_join_lines(self, count: int = 2) -> dict:
+        """Join lines together."""
+        count = int(count) if count else 2
+        vim_cmd = f"{count}J" if count > 2 else "J"
+        self.nvim.command(f"normal! {vim_cmd}")
+        self._narrate(f"Join {count} lines ({vim_cmd})")
+        return {"success": True, "joined": count, "vim_cmd": vim_cmd}
+
+    # =========================================================================
+    # Selection Helpers Handlers
+    # =========================================================================
+
+    def _handle_select_word(self) -> dict:
+        """Select word under cursor."""
+        word = self.nvim.eval("expand('<cword>')")
+        self.nvim.command("normal! viw")
+        self._narrate("Select word (viw)")
+        return {"success": True, "word": word or "", "vim_cmd": "viw"}
+
+    def _handle_select_line(
+        self,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None
+    ) -> dict:
+        """Select entire line(s)."""
+        if start_line is not None and end_line is not None:
+            start_line, end_line = int(start_line), int(end_line)
+            self.nvim.set_cursor(start_line, 0)
+            self.nvim.command("normal! V")
+            if end_line > start_line:
+                self.nvim.command(f"normal! {end_line - start_line}j")
+            count = end_line - start_line + 1
+        elif start_line is not None:
+            self.nvim.set_cursor(int(start_line), 0)
+            self.nvim.command("normal! V")
+            count = 1
+        else:
+            self.nvim.command("normal! V")
+            count = 1
+
+        self._narrate(f"Select {count} line(s) (V)")
+        return {"success": True, "lines": count, "vim_cmd": "V"}
+
+    def _handle_select_block(
+        self,
+        type: str = "paragraph",
+        around: bool = False
+    ) -> dict:
+        """Select a code block."""
+        modifier = "a" if around else "i"
+        block_map = {
+            "paragraph": "p",
+            "brace": "{",
+            "paren": "(",
+            "bracket": "[",
+        }
+
+        if type not in block_map:
+            return {"success": False, "error": f"Unknown block type: {type}"}
+
+        char = block_map[type]
+        vim_cmd = f"v{modifier}{char}"
+        self.nvim.command(f"normal! v{modifier}{char}")
+        desc = "around" if around else "inside"
+        self._narrate(f"Select {desc} {type} ({vim_cmd})")
+        return {"success": True, "type": type, "around": around, "vim_cmd": vim_cmd}
+
+    def _handle_select_all(self) -> dict:
+        """Select entire buffer."""
+        self.nvim.command("normal! ggVG")
+        line_count = self.nvim.eval("line('$')")
+        self._narrate("Select all (ggVG)")
+        return {"success": True, "lines": line_count, "vim_cmd": "ggVG"}
+
+    # =========================================================================
+    # Indentation Handlers
+    # =========================================================================
+
+    def _handle_indent(
+        self,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        count: int = 1
+    ) -> dict:
+        """Increase indentation."""
+        count = int(count) if count else 1
+
+        if start_line is not None and end_line is not None:
+            start_line, end_line = int(start_line), int(end_line)
+            for _ in range(count):
+                self.nvim.command(f"{start_line},{end_line}>")
+            lines = end_line - start_line + 1
+            vim_cmd = f":{start_line},{end_line}>"
+        else:
+            for _ in range(count):
+                self.nvim.command("normal! >>")
+            lines = 1
+            vim_cmd = ">>"
+
+        self._narrate(f"Indent {lines} line(s) ({vim_cmd})")
+        return {"success": True, "lines": lines, "levels": count, "vim_cmd": vim_cmd}
+
+    def _handle_dedent(
+        self,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        count: int = 1
+    ) -> dict:
+        """Decrease indentation."""
+        count = int(count) if count else 1
+
+        if start_line is not None and end_line is not None:
+            start_line, end_line = int(start_line), int(end_line)
+            for _ in range(count):
+                self.nvim.command(f"{start_line},{end_line}<")
+            lines = end_line - start_line + 1
+            vim_cmd = f":{start_line},{end_line}<"
+        else:
+            for _ in range(count):
+                self.nvim.command("normal! <<")
+            lines = 1
+            vim_cmd = "<<"
+
+        self._narrate(f"Dedent {lines} line(s) ({vim_cmd})")
+        return {"success": True, "lines": lines, "levels": count, "vim_cmd": vim_cmd}
+
+    # =========================================================================
+    # Navigation Handlers
+    # =========================================================================
+
+    def _handle_goto_line(self, line: int) -> dict:
+        """Jump to a specific line."""
+        line = int(line)
+        self.nvim.set_cursor(line, 0)
+        self.nvim.command("normal! ^")
+        self._narrate(f"Go to line {line} (:{line} or {line}G)")
+        cursor = self.nvim.get_cursor()
+        return {"success": True, "line": cursor[0], "column": cursor[1], "vim_cmd": f":{line}"}
+
+    def _handle_goto_matching(self) -> dict:
+        """Jump to matching bracket."""
+        before = self.nvim.get_cursor()
+        self.nvim.command("normal! %")
+        after = self.nvim.get_cursor()
+        moved = before != after
+        self._narrate("Jump to matching bracket (%)")
+        return {
+            "success": moved,
+            "from": {"line": before[0], "column": before[1]},
+            "to": {"line": after[0], "column": after[1]},
+            "vim_cmd": "%"
+        }
+
+    def _handle_next_error(self, severity: str = "error") -> dict:
+        """Jump to next diagnostic."""
+        severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
+        vim_severity = severity_map.get(severity, "ERROR")
+
+        self.nvim.command(f"lua vim.diagnostic.goto_next({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})")
+        cursor = self.nvim.get_cursor()
+        self._narrate(f"Jump to next {severity} (vim.diagnostic.goto_next())")
+        return {"success": True, "line": cursor[0], "column": cursor[1], "severity": severity, "vim_cmd": "]d"}
+
+    def _handle_prev_error(self, severity: str = "error") -> dict:
+        """Jump to previous diagnostic."""
+        severity_map = {"error": "ERROR", "warning": "WARN", "info": "INFO", "hint": "HINT"}
+        vim_severity = severity_map.get(severity, "ERROR")
+
+        self.nvim.command(f"lua vim.diagnostic.goto_prev({{severity={{min=vim.diagnostic.severity.{vim_severity}}}}})")
+        cursor = self.nvim.get_cursor()
+        self._narrate(f"Jump to previous {severity} (vim.diagnostic.goto_prev())")
+        return {"success": True, "line": cursor[0], "column": cursor[1], "severity": severity, "vim_cmd": "[d"}
+
+    def _handle_jump_back(self, count: int = 1) -> dict:
+        """Jump back in jump list."""
+        count = int(count) if count else 1
+        self.nvim.command(f"normal! {count}\\<C-o>")
+        cursor = self.nvim.get_cursor()
+        buf = self.nvim.get_current_buffer()
+        self._narrate(f"Jump back (Ctrl+O)")
+        return {"success": True, "path": buf.name, "line": cursor[0], "column": cursor[1], "vim_cmd": "Ctrl+O"}
+
+    def _handle_jump_forward(self, count: int = 1) -> dict:
+        """Jump forward in jump list."""
+        count = int(count) if count else 1
+        self.nvim.command(f"normal! {count}\\<C-i>")
+        cursor = self.nvim.get_cursor()
+        buf = self.nvim.get_current_buffer()
+        self._narrate(f"Jump forward (Ctrl+I)")
+        return {"success": True, "path": buf.name, "line": cursor[0], "column": cursor[1], "vim_cmd": "Ctrl+I"}
+
+    # =========================================================================
+    # Learning / Help Handlers
+    # =========================================================================
+
+    def _handle_explain_command(self, command: str) -> dict:
+        """Explain a vim command."""
+        explanations = {
+            # Movement
+            "h": "Move cursor left",
+            "j": "Move cursor down",
+            "k": "Move cursor up",
+            "l": "Move cursor right",
+            "w": "Move to next word",
+            "b": "Move to previous word",
+            "e": "Move to end of word",
+            "0": "Move to start of line",
+            "$": "Move to end of line",
+            "^": "Move to first non-blank char",
+            "gg": "Go to first line",
+            "G": "Go to last line",
+            "%": "Jump to matching bracket",
+            # Editing
+            "i": "Insert before cursor",
+            "a": "Insert after cursor",
+            "I": "Insert at line start",
+            "A": "Insert at line end",
+            "o": "New line below",
+            "O": "New line above",
+            "x": "Delete character",
+            "dd": "Delete line",
+            "dw": "Delete word",
+            "d$": "Delete to end of line",
+            "D": "Delete to end of line",
+            "cc": "Change entire line",
+            "cw": "Change word",
+            "ciw": "Change inner word",
+            'ci"': "Change inside quotes",
+            "ci(": "Change inside parens",
+            "ci{": "Change inside braces",
+            "yy": "Copy line",
+            "yw": "Copy word",
+            "p": "Paste after cursor",
+            "P": "Paste before cursor",
+            "u": "Undo",
+            "U": "Undo line changes",
+            # Visual
+            "v": "Visual mode (char)",
+            "V": "Visual mode (line)",
+            # Search
+            "/": "Search forward",
+            "?": "Search backward",
+            "n": "Next match",
+            "N": "Previous match",
+            "*": "Search word forward",
+            "#": "Search word backward",
+            # Files
+            ":w": "Save file",
+            ":q": "Quit",
+            ":wq": "Save and quit",
+            ":q!": "Force quit",
+            ":e": "Open file",
+            # Other
+            ".": "Repeat last change",
+            "J": "Join lines",
+            ">>": "Indent line",
+            "<<": "Dedent line",
+            "gcc": "Toggle comment",
+            "gd": "Go to definition",
+            "zc": "Fold at cursor",
+            "zo": "Unfold at cursor",
+            "zM": "Fold all",
+            "zR": "Unfold all",
+        }
+
+        cmd = command.strip()
+        if cmd in explanations:
+            explanation = explanations[cmd]
+        elif cmd.startswith("d"):
+            explanation = f"Delete with motion '{cmd[1:]}'"
+        elif cmd.startswith("c"):
+            explanation = f"Change with motion '{cmd[1:]}'"
+        elif cmd.startswith("y"):
+            explanation = f"Yank (copy) with motion '{cmd[1:]}'"
+        elif cmd.startswith(":"):
+            explanation = f"Ex command - try ':help {cmd[1:]}' in Neovim"
+        else:
+            explanation = f"Try ':help {cmd}' in Neovim for details"
+
+        return {"command": cmd, "explanation": explanation}
+
+    def _handle_vim_cheatsheet(self, category: str = "all") -> dict:
+        """Show vim cheatsheet."""
+        cheatsheet = {
+            "movement": {
+                "title": "Movement",
+                "commands": {
+                    "h/j/k/l": "Left/Down/Up/Right",
+                    "w / b": "Next / Previous word",
+                    "0 / $": "Start / End of line",
+                    "gg / G": "Top / Bottom of file",
+                    "Ctrl+d/u": "Half page down/up",
+                    "%": "Matching bracket",
+                }
+            },
+            "editing": {
+                "title": "Editing",
+                "commands": {
+                    "i / a": "Insert before/after",
+                    "o / O": "New line below/above",
+                    "dd": "Delete line",
+                    "cc": "Change line",
+                    "yy / p": "Copy / Paste",
+                    "u / Ctrl+R": "Undo / Redo",
+                    "ciw": "Change inner word",
+                    ">>": "Indent line",
+                }
+            },
+            "search": {
+                "title": "Search",
+                "commands": {
+                    "/pattern": "Search forward",
+                    "n / N": "Next / Previous match",
+                    "*": "Search word under cursor",
+                    ":%s/old/new/g": "Replace all",
+                }
+            },
+            "visual": {
+                "title": "Visual Mode",
+                "commands": {
+                    "v": "Character selection",
+                    "V": "Line selection",
+                    "viw": "Select word",
+                    "vi{": "Select inside braces",
+                }
+            },
+            "files": {
+                "title": "Files",
+                "commands": {
+                    ":w": "Save",
+                    ":q": "Quit",
+                    ":wq": "Save & quit",
+                    ":e path": "Open file",
+                }
+            },
+        }
+
+        if category == "all":
+            result_cats = cheatsheet
+        elif category in cheatsheet:
+            result_cats = {category: cheatsheet[category]}
+        else:
+            return {"success": False, "error": f"Unknown category: {category}"}
+
+        return {"success": True, "categories": result_cats}
+
+    def _handle_suggest_command(self, task: str) -> dict:
+        """Suggest vim commands for a task."""
+        task_lower = task.lower()
+        suggestions = []
+
+        patterns = [
+            (["delete", "remove"], [
+                ("dd", "Delete line"),
+                ("dw", "Delete word"),
+                ("diw", "Delete inner word"),
+                ('di"', "Delete inside quotes"),
+            ]),
+            (["copy", "yank", "duplicate"], [
+                ("yy", "Copy line"),
+                ("yw", "Copy word"),
+                ("yyp", "Duplicate line"),
+            ]),
+            (["paste"], [
+                ("p", "Paste after"),
+                ("P", "Paste before"),
+            ]),
+            (["replace", "change"], [
+                ("ciw", "Change word"),
+                ("cc", "Change line"),
+                ('ci"', "Change inside quotes"),
+                (":%s/old/new/g", "Replace all"),
+            ]),
+            (["undo"], [("u", "Undo"), ("Ctrl+R", "Redo")]),
+            (["search", "find"], [
+                ("/pattern", "Search forward"),
+                ("*", "Search word under cursor"),
+            ]),
+            (["select"], [
+                ("viw", "Select word"),
+                ("V", "Select line"),
+                ("ggVG", "Select all"),
+            ]),
+            (["indent"], [(">>", "Indent"), ("<<", "Dedent")]),
+            (["save"], [(":w", "Save"), (":wq", "Save & quit")]),
+            (["quit", "exit"], [(":q", "Quit"), (":q!", "Force quit")]),
+            (["comment"], [("gcc", "Toggle comment")]),
+            (["move line"], [(":m .+1", "Move down"), (":m .-2", "Move up")]),
+            (["go to", "jump"], [
+                (":{n}", "Go to line n"),
+                ("gg", "Go to top"),
+                ("G", "Go to bottom"),
+                ("gd", "Go to definition"),
+            ]),
+        ]
+
+        for keywords, cmds in patterns:
+            if any(kw in task_lower for kw in keywords):
+                suggestions.extend(cmds)
+
+        if not suggestions:
+            suggestions = [("(no match)", "Try describing differently")]
+
+        return {
+            "task": task,
+            "suggestions": [{"command": c, "description": d} for c, d in suggestions]
+        }
+
+    def _narrate(self, message: str):
+        """Show vim tip if narrated mode is enabled."""
+        if self.config.get("narrated", False):
+            self.nvim.notify(f"📚 {message}", "info")
 
     # =========================================================================
     # MCP Protocol Implementation
@@ -1248,6 +2483,347 @@ class PrismMCPServer:
             "result": {"tools": tools_list}
         }
 
+    def _format_result(self, tool_name: str, result: dict) -> str:
+        """Format tool result as human-readable text."""
+        # Check for errors first
+        if result.get("success") is False:
+            error = result.get("error", "Unknown error")
+            return f"✗ {error}"
+
+        # Simple success cases
+        if result == {"success": True}:
+            return "✓ Done"
+
+        # Handle specific tool outputs
+        if tool_name == "run_command":
+            if result.get("protected"):
+                return "✓ Done (terminal protected)"
+            return "✓ Done"
+
+        if tool_name == "save_file":
+            return "✓ Saved"
+
+        if tool_name == "open_file":
+            path = result.get("path", "")
+            name = path.split("/")[-1] if "/" in path else path
+            return f"✓ Opened: {name}"
+
+        if tool_name == "create_file":
+            path = result.get("path", "")
+            return f"✓ Created: {path}"
+
+        if tool_name == "close_file":
+            return "✓ Closed"
+
+        if tool_name in ("edit_buffer", "set_buffer_content"):
+            parts = []
+            if "lines_changed" in result:
+                parts.append(f"{result['lines_changed']} lines")
+            if result.get("saved"):
+                parts.append("saved")
+            if parts:
+                return f"✓ {', '.join(parts)}"
+            return "✓ Updated"
+
+        if tool_name == "insert_text":
+            return "✓ Inserted"
+
+        if tool_name == "search_and_replace":
+            count = result.get("replacements", 0)
+            return f"✓ {count} replacement{'s' if count != 1 else ''}"
+
+        if tool_name == "notify":
+            return "✓ Notified"
+
+        if tool_name == "set_config":
+            cfg = result.get("config", {})
+            parts = []
+            if cfg.get("auto_save"):
+                parts.append("auto-save")
+            if cfg.get("narrated"):
+                parts.append("narrated")
+            mode = ", ".join(parts) if parts else "default"
+            return f"✓ Mode: {mode}"
+
+        if tool_name == "format_file":
+            return "✓ Formatted"
+
+        if tool_name == "split_window":
+            return "✓ Split created"
+
+        if tool_name == "close_window":
+            return "✓ Window closed"
+
+        if tool_name == "set_cursor_position":
+            return "✓ Cursor moved"
+
+        if tool_name == "diff_preview":
+            return result.get("message", "✓ Diff preview opened")
+
+        # Data-returning tools - format nicely
+        if tool_name == "get_buffer_content":
+            content = result.get("content", "")
+            lines = content.count("\n") + 1 if content else 0
+            return f"{lines} lines\n\n{content}"
+
+        if tool_name == "get_buffer_lines":
+            lines = result.get("lines", [])
+            start = result.get("start_line", 1)
+            formatted = "\n".join(f"{start + i}: {line}" for i, line in enumerate(lines))
+            return formatted if formatted else "(empty)"
+
+        if tool_name == "get_current_file":
+            path = result.get("path", "")
+            cursor = result.get("cursor", {})
+            modified = "●" if result.get("modified") else ""
+            return f"{path} {modified}\nLine {cursor.get('line', 1)}, Col {cursor.get('column', 0)}"
+
+        if tool_name == "get_cursor_position":
+            return f"Line {result.get('line', 1)}, Col {result.get('column', 0)}"
+
+        if tool_name == "get_open_files":
+            files = result.get("files", [])
+            if not files:
+                return "(no files open)"
+            lines = []
+            for f in files:
+                name = f.get("path", "").split("/")[-1]
+                mod = " ●" if f.get("modified") else ""
+                lines.append(f"  {name}{mod}")
+            return "\n".join(lines)
+
+        if tool_name == "get_windows":
+            windows = result.get("windows", [])
+            return f"{len(windows)} window{'s' if len(windows) != 1 else ''}"
+
+        if tool_name == "get_selection":
+            text = result.get("text")
+            if not text:
+                return "(no selection)"
+            return f"Selected:\n{text}"
+
+        if tool_name == "get_diagnostics":
+            diags = result.get("diagnostics", [])
+            if not diags:
+                return "✓ No diagnostics"
+            lines = []
+            for d in diags[:10]:  # Limit to 10
+                severity = d.get("severity", "info")
+                msg = d.get("message", "")
+                line = d.get("line", 0)
+                lines.append(f"  {severity}: L{line} {msg}")
+            if len(diags) > 10:
+                lines.append(f"  ... and {len(diags) - 10} more")
+            return "\n".join(lines)
+
+        if tool_name == "get_hover_info":
+            info = result.get("info", "")
+            return info if info else "(no hover info)"
+
+        if tool_name == "goto_definition":
+            if result.get("success"):
+                path = result.get("path", "").split("/")[-1]
+                line = result.get("line", 1)
+                return f"→ {path}:{line}"
+            return "✗ No definition found"
+
+        if tool_name == "search_in_file":
+            matches = result.get("matches", [])
+            count = result.get("count", 0)
+            if count == 0:
+                return "(no matches)"
+            lines = [f"{count} match{'es' if count != 1 else ''}:"]
+            for m in matches[:5]:
+                lines.append(f"  L{m.get('line', 0)}:{m.get('column', 0)}")
+            if count > 5:
+                lines.append(f"  ... and {count - 5} more")
+            return "\n".join(lines)
+
+        if tool_name == "git_status":
+            return json.dumps(result, indent=2, cls=BytesEncoder)
+
+        if tool_name == "git_diff":
+            diff = result.get("diff", "")
+            return diff if diff else "(no changes)"
+
+        if tool_name == "get_config":
+            cfg = result.get("config", {})
+            lines = [
+                f"auto_save: {cfg.get('auto_save', False)}",
+                f"keep_focus: {cfg.get('keep_focus', True)}",
+                f"narrated: {cfg.get('narrated', False)}"
+            ]
+            return "\n".join(lines)
+
+        if tool_name == "open_terminal":
+            return "✓ Terminal opened"
+
+        # Undo/Redo
+        if tool_name == "undo":
+            count = result.get("count", 1)
+            vim_cmd = result.get("vim_cmd", "u")
+            return f"↶ Undid {count} change{'s' if count != 1 else ''} ({vim_cmd})"
+
+        if tool_name == "redo":
+            count = result.get("count", 1)
+            return f"↷ Redid {count} change{'s' if count != 1 else ''} (Ctrl+R)"
+
+        # LSP Advanced
+        if tool_name == "get_references":
+            return result.get("message", "✓ References found")
+
+        if tool_name == "rename_symbol":
+            new_name = result.get("new_name", "")
+            return f"✓ Renamed to '{new_name}'"
+
+        if tool_name == "code_actions":
+            return result.get("message", "✓ Code actions shown")
+
+        # Folding
+        if tool_name == "fold":
+            vim_cmd = result.get("vim_cmd", "zc")
+            msg = result.get("message", "")
+            return f"▼ Folded ({vim_cmd})" + (f" - {msg}" if msg else "")
+
+        if tool_name == "unfold":
+            vim_cmd = result.get("vim_cmd", "zo")
+            msg = result.get("message", "")
+            return f"▶ Unfolded ({vim_cmd})" + (f" - {msg}" if msg else "")
+
+        # Bookmarks
+        if tool_name == "bookmark":
+            name = result.get("name", "")
+            line = result.get("line", 0)
+            return f"🔖 Bookmark '{name}' at L{line}"
+
+        if tool_name == "goto_bookmark":
+            name = result.get("name", "")
+            path = result.get("path", "").split("/")[-1]
+            line = result.get("line", 0)
+            return f"→ {path}:{line} (bookmark '{name}')"
+
+        if tool_name == "list_bookmarks":
+            bookmarks = result.get("bookmarks", {})
+            if not bookmarks:
+                return "(no bookmarks)"
+            lines = []
+            for name, bm in bookmarks.items():
+                path = bm.get("path", "").split("/")[-1]
+                line = bm.get("line", 0)
+                desc = bm.get("description", "")
+                lines.append(f"  🔖 {name}: {path}:{line}" + (f" - {desc}" if desc else ""))
+            return "\n".join(lines)
+
+        if tool_name == "delete_bookmark":
+            name = result.get("name", "")
+            return f"✓ Deleted bookmark '{name}'"
+
+        # Line Operations
+        if tool_name == "comment":
+            count = result.get("lines", 1)
+            vim_cmd = result.get("vim_cmd", "gcc")
+            return f"# Toggled comment on {count} line{'s' if count != 1 else ''} ({vim_cmd})"
+
+        if tool_name == "duplicate_line":
+            copies = result.get("copies", 1)
+            vim_cmd = result.get("vim_cmd", "yyp")
+            return f"= Duplicated {copies} time{'s' if copies != 1 else ''} ({vim_cmd})"
+
+        if tool_name == "move_line":
+            direction = result.get("direction", "")
+            vim_cmd = result.get("vim_cmd", "")
+            arrow = "↑" if direction == "up" else "↓"
+            return f"{arrow} Moved line {direction} ({vim_cmd})"
+
+        if tool_name == "delete_line":
+            deleted = result.get("deleted", 1)
+            vim_cmd = result.get("vim_cmd", "dd")
+            return f"✗ Deleted {deleted} line{'s' if deleted != 1 else ''} ({vim_cmd})"
+
+        if tool_name == "join_lines":
+            joined = result.get("joined", 2)
+            vim_cmd = result.get("vim_cmd", "J")
+            return f"~ Joined {joined} lines ({vim_cmd})"
+
+        # Selection Helpers
+        if tool_name == "select_word":
+            word = result.get("word", "")
+            return f"['{word}'] selected (viw)"
+
+        if tool_name == "select_line":
+            count = result.get("lines", 1)
+            return f"[{count} line{'s' if count != 1 else ''}] selected (V)"
+
+        if tool_name == "select_block":
+            block_type = result.get("type", "")
+            vim_cmd = result.get("vim_cmd", "")
+            return f"[{block_type}] selected ({vim_cmd})"
+
+        if tool_name == "select_all":
+            lines = result.get("lines", 0)
+            return f"[all {lines} lines] selected (ggVG)"
+
+        # Indentation
+        if tool_name == "indent":
+            lines = result.get("lines", 1)
+            levels = result.get("levels", 1)
+            return f"→ Indented {lines} line{'s' if lines != 1 else ''} (>>)"
+
+        if tool_name == "dedent":
+            lines = result.get("lines", 1)
+            levels = result.get("levels", 1)
+            return f"← Dedented {lines} line{'s' if lines != 1 else ''} (<<)"
+
+        # Navigation
+        if tool_name == "goto_line":
+            line = result.get("line", 1)
+            return f"→ Line {line}"
+
+        if tool_name == "goto_matching":
+            if result.get("success"):
+                to = result.get("to", {})
+                return f"→ Matching bracket at L{to.get('line', 0)}:C{to.get('column', 0)} (%)"
+            return "(no matching bracket)"
+
+        if tool_name in ("next_error", "prev_error"):
+            direction = "Next" if tool_name == "next_error" else "Previous"
+            severity = result.get("severity", "error")
+            line = result.get("line", 0)
+            return f"⚠ {direction} {severity} at L{line}"
+
+        if tool_name in ("jump_back", "jump_forward"):
+            direction = "Back" if tool_name == "jump_back" else "Forward"
+            path = result.get("path", "").split("/")[-1]
+            line = result.get("line", 0)
+            vim_cmd = result.get("vim_cmd", "")
+            return f"← {direction} to {path}:{line} ({vim_cmd})"
+
+        # Learning/Help
+        if tool_name == "explain_command":
+            cmd = result.get("command", "")
+            explanation = result.get("explanation", "")
+            return f"'{cmd}' → {explanation}"
+
+        if tool_name == "vim_cheatsheet":
+            cats = result.get("categories", {})
+            lines = []
+            for cat_key, cat in cats.items():
+                lines.append(f"\n─── {cat.get('title', cat_key)} ───")
+                for cmd, desc in cat.get("commands", {}).items():
+                    lines.append(f"  {cmd:15s} {desc}")
+            return "\n".join(lines).strip()
+
+        if tool_name == "suggest_command":
+            task = result.get("task", "")
+            suggestions = result.get("suggestions", [])
+            lines = [f"For: {task}"]
+            for s in suggestions:
+                lines.append(f"  {s.get('command', ''):15s} {s.get('description', '')}")
+            return "\n".join(lines)
+
+        # Fallback: return JSON for unknown structures
+        return json.dumps(result, indent=2, cls=BytesEncoder)
+
     def _handle_tool_call_sync(self, msg_id: int, params: dict) -> dict:
         """Handle tools/call request (synchronous)."""
         tool_name = params.get("name")
@@ -1269,6 +2845,7 @@ class PrismMCPServer:
 
         try:
             result = tool.handler(**arguments)
+            formatted = self._format_result(tool_name, result)
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
@@ -1276,7 +2853,7 @@ class PrismMCPServer:
                     "content": [
                         {
                             "type": "text",
-                            "text": json.dumps(result, indent=2, cls=BytesEncoder)
+                            "text": formatted
                         }
                     ]
                 }

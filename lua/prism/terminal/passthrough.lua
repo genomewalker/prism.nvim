@@ -4,6 +4,74 @@
 
 local M = {}
 
+--- Execute menu action
+local function execute_action(action, term_bufnr)
+	if action == "copy" then
+		-- Copy selection to system clipboard
+		vim.cmd('normal! "+y')
+		vim.notify("Copied to clipboard", vim.log.levels.INFO)
+	elseif action == "paste" then
+		-- Paste from system clipboard into terminal
+		local content = vim.fn.getreg("+")
+		if content and content ~= "" then
+			local jobid = vim.b[term_bufnr].terminal_job_id
+			if jobid then
+				vim.fn.chansend(jobid, content)
+			end
+		end
+	elseif action == "cut" then
+		vim.cmd('normal! "+d')
+		vim.notify("Cut to clipboard", vim.log.levels.INFO)
+	elseif action == "select_all" then
+		-- Select all in terminal buffer
+		vim.cmd("normal! ggVG")
+	elseif action == "clear" then
+		-- Send Ctrl+L to clear screen
+		local jobid = vim.b[term_bufnr].terminal_job_id
+		if jobid then
+			vim.fn.chansend(jobid, "\x0c")
+		end
+	elseif action == "interrupt" then
+		-- Send Ctrl+C
+		local jobid = vim.b[term_bufnr].terminal_job_id
+		if jobid then
+			vim.fn.chansend(jobid, "\x03")
+		end
+	elseif action == "exit_terminal" then
+		vim.cmd("stopinsert")
+	end
+end
+
+--- Show context menu using vim.ui.select
+function M.show_context_menu(term_bufnr)
+	local actions = {
+		{ label = "Copy", action = "copy" },
+		{ label = "Paste", action = "paste" },
+		{ label = "Cut", action = "cut" },
+		{ label = "Select All", action = "select_all" },
+		{ label = "Clear Screen", action = "clear" },
+		{ label = "Interrupt (^C)", action = "interrupt" },
+		{ label = "Normal Mode", action = "exit_terminal" },
+	}
+
+	local labels = {}
+	for _, item in ipairs(actions) do
+		table.insert(labels, item.label)
+	end
+
+	vim.ui.select(labels, { prompt = "Claude Terminal:" }, function(choice)
+		if not choice then
+			return
+		end
+		for _, item in ipairs(actions) do
+			if item.label == choice then
+				execute_action(item.action, term_bufnr)
+				break
+			end
+		end
+	end)
+end
+
 --- Setup passthrough mode for a terminal buffer
 ---@param bufnr number Buffer number
 function M.setup(bufnr)
@@ -65,6 +133,31 @@ function M.setup(bufnr)
 		})
 	end
 
+	-- Right-click context menu
+	vim.keymap.set("t", "<C-RightMouse>", function()
+		vim.cmd("stopinsert")
+		vim.schedule(function()
+			pcall(M.show_context_menu, bufnr)
+		end)
+	end, {
+		buffer = bufnr,
+		noremap = true,
+		silent = true,
+		nowait = true,
+		desc = "Show context menu",
+	})
+
+	-- Also map in normal mode for when they've already exited
+	vim.keymap.set("n", "<C-RightMouse>", function()
+		pcall(M.show_context_menu, bufnr)
+	end, {
+		buffer = bufnr,
+		noremap = true,
+		silent = true,
+		nowait = true,
+		desc = "Show context menu",
+	})
+
 	-- Set buffer options for clean terminal
 	vim.bo[bufnr].scrollback = 10000
 
@@ -97,14 +190,18 @@ end
 
 --- Show help for passthrough mode
 function M.show_help()
-	vim.notify([[
+	vim.notify(
+		[[
 Prism Passthrough Terminal:
   All keys pass through to Claude.
 
   To exit: Ctrl+\ Ctrl+\ (or Ctrl+\ Ctrl+n)
+  Right-click: Context menu (Copy, Paste, etc.)
 
   Then use normal Neovim commands to navigate.
-]], vim.log.levels.INFO)
+]],
+		vim.log.levels.INFO
+	)
 end
 
 return M
