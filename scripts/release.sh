@@ -98,9 +98,17 @@ if [[ -f "$LUA_CORE" ]]; then
     fi
 fi
 
+# Update version in plugin.json if exists
+PLUGIN_JSON=".claude-plugin/plugin.json"
+if [[ -f "$PLUGIN_JSON" ]]; then
+    info "Updating .claude-plugin/plugin.json..."
+    sed -i.bak "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" "$PLUGIN_JSON"
+    rm -f "${PLUGIN_JSON}.bak"
+fi
+
 # Commit version bump
 info "Committing version bump..."
-git add "$PYPROJECT" "$LUA_CORE" 2>/dev/null || git add "$PYPROJECT"
+git add "$PYPROJECT" "$LUA_CORE" "$PLUGIN_JSON" 2>/dev/null || git add "$PYPROJECT"
 git commit -m "chore: bump version to ${NEW_VERSION}"
 
 # Create tag
