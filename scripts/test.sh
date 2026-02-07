@@ -161,7 +161,7 @@ run_tests() {
         echo -e "${RED}Some tests failed.${NC}"
     fi
 
-    return $exit_code
+    return "$exit_code"
 }
 
 # Run tests with coverage (using luacov if available)
