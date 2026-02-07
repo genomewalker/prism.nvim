@@ -655,8 +655,8 @@ footer {
     <div class="feature-grid">
       <div class="feature">
         <div class="feature-icon">⚡</div>
-        <h3>40+ Vibe Coder Tools</h3>
-        <p>Comment, duplicate, move lines, fold code, indent—all via natural language. No vim knowledge needed.</p>
+        <h3>55+ Vibe Coder Tools</h3>
+        <p>Comment, duplicate, move lines, fold code, git operations, symbol navigation—all via natural language.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">📚</div>
@@ -680,8 +680,18 @@ footer {
       </div>
       <div class="feature">
         <div class="feature-icon">🛡️</div>
-        <h3>Protected Terminal</h3>
-        <p>Terminal window is protected from buffer-switching commands. Claude can't accidentally close it.</p>
+        <h3>Trust Modes</h3>
+        <p>Guardian (review all), Companion (auto with overlay), Autopilot (full auto). Switch by saying "be careful" or "just do it".</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗣️</div>
+        <h3>Natural Language</h3>
+        <p>"Go to line 42", "fix this error", "commit with message X", "who wrote this?"—Claude understands intent.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📦</div>
+        <h3>Git Integration</h3>
+        <p>Stage, commit, blame, log—all via natural language. "Stage this", "commit with message fix bug".</p>
       </div>
     </div>
   </div>
@@ -728,6 +738,52 @@ footer {
           <code><span class="comment">"How do I delete inside quotes?"</span> → suggest_command</code>
           <code><span class="comment">"Show me editing commands"</span> → vim_cheatsheet</code>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="natural-language" style="background: linear-gradient(180deg, transparent, rgba(34,197,94,0.02));">
+  <h2>Natural Language Interface</h2>
+  <h3>Just talk to Claude naturally</h3>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">🗣️</div>
+      <div class="step-content">
+        <h4>Navigation & Editing</h4>
+        <div class="code-block" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+          <code><span class="comment">"go to line 42"</span> → goto_line(42)</code>
+          <code><span class="comment">"show me errors"</span> → get_diagnostics()</code>
+          <code><span class="comment">"fix this error"</span> → fix_diagnostic()</code>
+          <code><span class="comment">"replace foo with bar"</span> → search_and_replace()</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">📦</div>
+      <div class="step-content">
+        <h4>Git Operations</h4>
+        <div class="code-block" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+          <code><span class="comment">"stage this file"</span> → git_stage()</code>
+          <code><span class="comment">"commit with message X"</span> → git_commit("X")</code>
+          <code><span class="comment">"who wrote this line?"</span> → git_blame()</code>
+          <code><span class="comment">"show recent commits"</span> → git_log()</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">🛡️</div>
+      <div class="step-content">
+        <h4>Trust Modes</h4>
+        <div class="code-block" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+          <code><span class="comment">"be more careful"</span> → Guardian (review all edits)</code>
+          <code><span class="comment">"I trust you"</span> → Companion (auto with overlay)</code>
+          <code><span class="comment">"just do it"</span> → Autopilot (full auto)</code>
+        </div>
+        <p class="step-note">Or use <kbd>:PrismMode</kbd> to switch with a picker UI</p>
       </div>
     </div>
   </div>
