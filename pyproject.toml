@@ -44,9 +44,10 @@ dev = [
 prism-nvim = "prism_nvim.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/prism.nvim"
-Repository = "https://github.com/yourusername/prism.nvim"
-Issues = "https://github.com/yourusername/prism.nvim/issues"
+Homepage = "https://genomewalker.github.io/prism.nvim/"
+Repository = "https://github.com/genomewalker/prism.nvim"
+Documentation = "https://genomewalker.github.io/prism.nvim/"
+Issues = "https://github.com/genomewalker/prism.nvim/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["prism_nvim"]
