@@ -1,0 +1,17 @@
+{
+  "name": "genomewalker-prism-nvim",
+  "description": "Claude Code + Neovim integration with MCP control",
+  "owner": {
+    "name": "Antonio Fernandez-Guerra"
+  },
+  "plugins": [
+    {
+      "name": "prism-nvim",
+      "source": "./",
+      "description": "Control Neovim from Claude Code. 10-50x token savings with vim commands instead of file contents.",
+      "skills": [
+        "./skills/prism"
+      ]
+    }
+  ]
+}

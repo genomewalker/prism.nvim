@@ -1,0 +1,643 @@
+*prism.txt*  The Ultimate Claude Code Integration for Neovim
+
+Author:  Prism Contributors
+License: MIT
+
+==============================================================================
+CONTENTS                                                      *prism-contents*
+
+    1. Introduction .......................... |prism-introduction|
+    2. Requirements .......................... |prism-requirements|
+    3. Installation .......................... |prism-installation|
+    4. Configuration ......................... |prism-configuration|
+    5. Commands .............................. |prism-commands|
+    6. Keymaps ............................... |prism-keymaps|
+    7. API ................................... |prism-api|
+    8. Terminal .............................. |prism-terminal|
+    9. MCP Protocol .......................... |prism-mcp|
+   10. Diff Engine ........................... |prism-diff|
+   11. Git Integration ....................... |prism-git|
+   12. LSP Integration ....................... |prism-lsp|
+   13. Code Actions .......................... |prism-actions|
+   14. Sessions .............................. |prism-sessions|
+   15. Memory ................................ |prism-memory|
+   16. Cost Tracking ......................... |prism-cost|
+   17. UI Components ......................... |prism-ui|
+   18. Health Check .......................... |prism-health|
+   19. FAQ ................................... |prism-faq|
+
+==============================================================================
+1. INTRODUCTION                                           *prism-introduction*
+
+Prism.nvim provides deep integration between Neovim and Claude Code CLI,
+offering a seamless AI-assisted coding experience with real-time
+communication, inline diff preview, and intelligent code actions.
+
+Features:
+- Full Claude Code CLI integration with streaming output
+- WebSocket-based MCP protocol for real-time communication
+- Session management with save/restore/checkpoint
+- Multi-model support (Opus/Sonnet/Haiku) with instant switching
+- Inline diff preview with extmarks (accept/reject per hunk)
+- LSP diagnostics integration
+- Git integration with per-hunk staging
+- Project memory and context persistence
+- Beautiful floating UI with command palette
+
+==============================================================================
+2. REQUIREMENTS                                           *prism-requirements*
+
+- Neovim >= 0.10.0
+- Claude Code CLI installed and authenticated
+- plenary.nvim (optional, for async utilities)
+- nui.nvim (for floating windows)
+
+Optional:
+- snacks.nvim (for enhanced terminal experience)
+- nvim-tree.lua, neo-tree.nvim, or oil.nvim (for tree integration)
+
+==============================================================================
+3. INSTALLATION                                           *prism-installation*
+
+Using lazy.nvim: >lua
+    {
+      "yourusername/prism.nvim",
+      dependencies = {
+        "MunifTanjim/nui.nvim",
+      },
+      config = function()
+        require("prism").setup()
+      end,
+    }
+<
+
+Using packer.nvim: >lua
+    use {
+      "yourusername/prism.nvim",
+      requires = { "MunifTanjim/nui.nvim" },
+      config = function()
+        require("prism").setup()
+      end,
+    }
+<
+
+==============================================================================
+4. CONFIGURATION                                         *prism-configuration*
+
+Call `require("prism").setup(opts)` with your configuration.
+
+Default configuration: >lua
+    require("prism").setup({
+      -- Terminal settings
+      terminal = {
+        provider = "native",   -- "native" | "snacks"
+        position = "vertical", -- "vertical" | "horizontal" | "float" | "tab"
+        width = 0.4,           -- percentage for vertical/float
+        height = 0.3,          -- percentage for horizontal/float
+        cmd = "claude",        -- Claude CLI command
+        auto_start = false,    -- auto-start on plugin load
+      },
+
+      -- MCP settings
+      mcp = {
+        auto_start = true,     -- auto-start MCP server
+        port_range = { 9100, 9199 },
+      },
+
+      -- Claude CLI flags
+      claude = {
+        model = nil,           -- model override (nil = default)
+        continue_session = false,
+        resume = nil,          -- session ID to resume
+        chrome = false,        -- browser integration
+        verbose = false,
+        permission_mode = nil, -- "default" | "accept-edits" | "full-auto"
+        dangerously_skip_permissions = false,
+        custom_flags = {},
+      },
+
+      -- Diff settings
+      diff = {
+        inline = true,
+        layout = "vertical",
+        auto_close = true,
+        signs = { add = "+", delete = "-", change = "~" },
+      },
+
+      -- UI settings
+      ui = {
+        border = "rounded",
+        width = 0.8,
+        height = 0.8,
+        blend = 0,
+      },
+
+      -- Keymaps
+      keymaps = {
+        toggle = "<leader>cc",
+        chat = "<leader>ct",
+        send = "<C-CR>",
+        actions = "<leader>ca",
+        diff = "<leader>cd",
+        model = "<leader>cm",
+        accept_hunk = "<leader>cy",
+        reject_hunk = "<leader>cn",
+        accept_all = "<leader>cY",
+        reject_all = "<leader>cN",
+        stop = "<leader>cx",
+        history = "<leader>ch",
+      },
+
+      -- Feature flags
+      features = {
+        git = true,
+        lsp = true,
+        memory = true,
+        cost = true,
+        session = true,
+        treesitter = true,
+        notifications = true,
+      },
+
+      -- Hooks
+      hooks = {
+        before_send = nil,   -- function(message) -> message or nil
+        after_response = nil,
+        on_error = nil,
+        on_diff = nil,
+      },
+
+      debug = false,
+      log_level = "info",
+    })
+<
+
+                                                          *prism-config.get()*
+Get configuration value: >lua
+    local config = require("prism.config")
+    local width = config.get("terminal.width")
+    local all = config.get()  -- returns full config
+<
+
+==============================================================================
+5. COMMANDS                                                   *prism-commands*
+
+:Prism                                                               *:Prism*
+    Open the main Prism layout with terminal and chat panels.
+
+:PrismToggle                                                   *:PrismToggle*
+    Toggle the Claude terminal visibility.
+
+:PrismChat                                                       *:PrismChat*
+    Open the chat input panel.
+
+:PrismSend [text]                                                *:PrismSend*
+    Send text or current selection to Claude. Without arguments, sends
+    the current visual selection.
+
+:PrismAction                                                   *:PrismAction*
+    Open the code actions menu with context-aware options.
+
+:PrismDiff                                                       *:PrismDiff*
+    Show diff view for Claude's proposed changes.
+
+:PrismModel                                                     *:PrismModel*
+    Open model picker (Opus/Sonnet/Haiku).
+
+:PrismAccept                                                   *:PrismAccept*
+    Accept current diff hunk.
+
+:PrismReject                                                   *:PrismReject*
+    Reject current diff hunk.
+
+:PrismAcceptAll                                             *:PrismAcceptAll*
+    Accept all diff hunks.
+
+:PrismRejectAll                                             *:PrismRejectAll*
+    Reject all diff hunks.
+
+:PrismStop                                                       *:PrismStop*
+    Stop the current Claude operation.
+
+:PrismSession [subcommand]                                   *:PrismSession*
+    Session management:
+    - `:PrismSession list`     - List saved sessions
+    - `:PrismSession save`     - Save current session
+    - `:PrismSession load`     - Load a session
+    - `:PrismSession delete`   - Delete a session
+
+:PrismCost                                                       *:PrismCost*
+    Show cost tracking information for current session.
+
+:PrismHealth                                                   *:PrismHealth*
+    Run health checks (also available via `:checkhealth prism`).
+
+==============================================================================
+6. KEYMAPS                                                     *prism-keymaps*
+
+Default keymaps (customizable in config):
+
+    <leader>cc    Toggle Claude terminal
+    <leader>ct    Open chat input
+    <C-CR>        Send message (in chat buffer)
+    <leader>ca    Open actions menu
+    <leader>cd    Show diff for current file
+    <leader>cm    Switch model
+    <leader>cy    Accept diff hunk
+    <leader>cn    Reject diff hunk
+    <leader>cY    Accept all hunks
+    <leader>cN    Reject all hunks
+    <leader>cx    Stop current operation
+    <leader>ch    Show session history
+
+In diff view:
+    ]c            Next hunk
+    [c            Previous hunk
+    <CR>          Accept hunk under cursor
+    x             Reject hunk under cursor
+    q             Close diff view
+
+==============================================================================
+7. API                                                             *prism-api*
+
+                                                          *prism.setup()*
+prism.setup({opts})
+    Initialize Prism with configuration options.
+
+                                                          *prism.open()*
+prism.open()
+    Open the main Prism layout.
+
+                                                          *prism.close()*
+prism.close()
+    Close all Prism windows.
+
+                                                          *prism.toggle()*
+prism.toggle()
+    Toggle the Claude terminal.
+
+                                                          *prism.send()*
+prism.send({text}, {opts})
+    Send text to Claude.
+    Parameters:
+      text - string or table of lines
+      opts - optional table { context, file, range }
+
+                                                          *prism.is_running()*
+prism.is_running()
+    Check if Claude terminal is running.
+    Returns: boolean
+
+==============================================================================
+8. TERMINAL                                                   *prism-terminal*
+
+The terminal module manages the Claude CLI process.
+
+                                                  *prism.terminal.open()*
+terminal.open({opts})
+    Open Claude terminal with options:
+      model           - Model override
+      continue_session - Resume last session
+      resume          - Specific session ID
+      cwd             - Working directory
+
+                                                  *prism.terminal.close()*
+terminal.close()
+    Close the terminal.
+
+                                                  *prism.terminal.toggle()*
+terminal.toggle()
+    Toggle terminal visibility.
+
+                                                  *prism.terminal.send()*
+terminal.send({text})
+    Send text to the terminal.
+
+                                                  *prism.terminal.restart()*
+terminal.restart({opts})
+    Restart terminal with new options.
+
+Providers:                                           *prism-terminal-providers*
+
+Prism supports multiple terminal providers:
+
+- `native` - Built-in vim.fn.termopen (default, always available)
+- `snacks` - snacks.nvim terminal (better floating UI)
+
+Provider is auto-detected based on availability.
+
+==============================================================================
+9. MCP PROTOCOL                                                   *prism-mcp*
+
+Prism implements a WebSocket-based MCP (Model Context Protocol) server
+that allows Claude to interact with the editor.
+
+The server provides these tools to Claude:
+
+  get_editors        Get list of open buffers/tabs
+  get_selection      Get current visual selection
+  get_workspace      Get workspace root and files
+  get_diagnostics    Get LSP diagnostics
+  open_file          Open a file in the editor
+  close_tab          Close a buffer/tab
+  save_document      Save a buffer
+  check_dirty        Check for unsaved changes
+  open_diff          Open diff view
+  close_diffs        Close all diff views
+
+Environment variables set for Claude:
+  CLAUDE_CODE_SSE_PORT       - MCP server port
+  ENABLE_IDE_INTEGRATION     - Enables IDE integration mode
+
+==============================================================================
+10. DIFF ENGINE                                                   *prism-diff*
+
+The diff engine provides inline diff preview using extmarks.
+
+                                                  *prism.diff.show()*
+diff.show({file}, {hunks})
+    Show diff hunks in a file.
+
+                                                  *prism.diff.accept()*
+diff.accept({hunk_id})
+    Accept a specific hunk.
+
+                                                  *prism.diff.reject()*
+diff.reject({hunk_id})
+    Reject a specific hunk.
+
+                                                  *prism.diff.accept_all()*
+diff.accept_all()
+    Accept all hunks in current buffer.
+
+                                                  *prism.diff.reject_all()*
+diff.reject_all()
+    Reject all hunks in current buffer.
+
+                                                  *prism.diff.clear()*
+diff.clear({bufnr})
+    Clear all diff decorations.
+
+Extmark highlights:                                    *prism-diff-highlights*
+
+  PrismDiffAdd       Lines added (green background)
+  PrismDiffDelete    Lines deleted (red background)
+  PrismDiffChange    Lines modified (yellow background)
+  PrismDiffText      Changed text within a line
+
+==============================================================================
+11. GIT INTEGRATION                                               *prism-git*
+
+                                                  *prism.git.root()*
+git.root({path})
+    Get git root for path. Returns nil if not in a repo.
+
+                                                  *prism.git.status()*
+git.status({path})
+    Get git status: { staged = {}, unstaged = {}, untracked = {} }
+
+                                                  *prism.git.diff()*
+git.diff({file}, {staged})
+    Get unified diff for a file.
+
+                                                  *prism.git.stage_file()*
+git.stage_file({file})
+    Stage a file.
+
+                                                  *prism.git.unstage_file()*
+git.unstage_file({file})
+    Unstage a file.
+
+                                                  *prism.git.stage_hunk()*
+git.stage_hunk({hunk}, {file})
+    Stage a specific hunk.
+
+                                                  *prism.git.unstage_hunk()*
+git.unstage_hunk({hunk}, {file})
+    Unstage a specific hunk.
+
+                                                  *prism.git.is_dirty()*
+git.is_dirty()
+    Check if working tree has changes.
+
+                                                  *prism.git.branch()*
+git.branch()
+    Get current branch name.
+
+                                                  *prism.git.is_safe_branch()*
+git.is_safe_branch()
+    Check if current branch is not protected (main, master, etc).
+
+                                                  *prism.git.watch()*
+git.watch({callback})
+    Watch .git/index for changes.
+
+Hunk operations:                                         *prism-git-hunk*
+
+The hunk module parses unified diffs:
+
+  hunk.parse_diff({output})      Parse diff into hunk objects
+  hunk.apply_hunk({hunk}, {mode})  Apply hunk (stage/unstage/discard)
+  hunk.format_patch({hunk})      Format hunk as git patch
+
+==============================================================================
+12. LSP INTEGRATION                                               *prism-lsp*
+
+                                                  *prism.lsp.get_diagnostics()*
+lsp.get_diagnostics({bufnr}, {severity})
+    Get diagnostics for a buffer.
+
+                                                  *prism.lsp.get_diagnostics_for_range()*
+lsp.get_diagnostics_for_range({bufnr}, {start}, {end})
+    Get diagnostics in a line range.
+
+                                                  *prism.lsp.format_for_claude()*
+lsp.format_for_claude({diagnostics})
+    Format diagnostics as human-readable text for Claude.
+
+                                                  *prism.lsp.summary()*
+lsp.summary({bufnr})
+    Get diagnostic summary: { errors, warnings, info, hints, total }
+
+                                                  *prism.lsp.has_errors()*
+lsp.has_errors({bufnr})
+    Check if buffer has error diagnostics.
+
+==============================================================================
+13. CODE ACTIONS                                             *prism-actions*
+
+Prism provides context-aware code actions:
+
+Built-in actions:
+  explain          Explain selected code
+  fix              Fix errors/issues
+  refactor         Refactor code
+  optimize         Optimize for performance
+  tests            Generate unit tests
+  docs             Generate documentation
+  review           Code review
+  simplify         Simplify complex code
+
+                                                  *prism.actions.run()*
+actions.run({name}, {opts})
+    Run a specific action.
+    Parameters:
+      name - Action name (e.g., "explain", "fix")
+      opts - { bufnr, range, context }
+
+                                                  *prism.actions.register()*
+actions.register({name}, {action})
+    Register a custom action.
+    action = { title, description, handler, condition }
+
+                                                  *prism.actions.list()*
+actions.list({context})
+    List available actions for current context.
+
+==============================================================================
+14. SESSIONS                                                 *prism-sessions*
+
+                                                  *prism.session.save()*
+session.save({name})
+    Save current session state.
+
+                                                  *prism.session.load()*
+session.load({name})
+    Load a saved session.
+
+                                                  *prism.session.list()*
+session.list()
+    List all saved sessions.
+
+                                                  *prism.session.delete()*
+session.delete({name})
+    Delete a saved session.
+
+                                                  *prism.session.current()*
+session.current()
+    Get current session info.
+
+==============================================================================
+15. MEMORY                                                     *prism-memory*
+
+Project memory persists context across sessions.
+
+                                                  *prism.memory.store()*
+memory.store({key}, {value}, {opts})
+    Store a memory entry.
+    opts = { tags, ttl, scope }
+
+                                                  *prism.memory.recall()*
+memory.recall({key})
+    Recall a stored memory.
+
+                                                  *prism.memory.search()*
+memory.search({query}, {opts})
+    Search memories semantically.
+    opts = { tags, scope, limit }
+
+                                                  *prism.memory.forget()*
+memory.forget({key})
+    Remove a memory entry.
+
+==============================================================================
+16. COST TRACKING                                               *prism-cost*
+
+                                                  *prism.cost.get()*
+cost.get()
+    Get current session cost info.
+    Returns: { input_tokens, output_tokens, total_cost, model }
+
+                                                  *prism.cost.reset()*
+cost.reset()
+    Reset cost tracking for new session.
+
+                                                  *prism.cost.format()*
+cost.format()
+    Format cost as displayable string.
+
+Pricing is automatically calculated based on the model used.
+
+==============================================================================
+17. UI COMPONENTS                                                 *prism-ui*
+
+                                                  *prism.ui.chat*
+Chat panel for interactive conversation.
+
+                                                  *prism.ui.palette*
+Command palette with fuzzy search.
+
+                                                  *prism.ui.model_picker*
+Model selection interface.
+
+                                                  *prism.ui.notify*
+Notification system integration.
+
+                                                  *prism.ui.status*
+Statusline component provider.
+
+Highlights:                                              *prism-ui-highlights*
+
+  PrismBorder        Window borders
+  PrismTitle         Window titles
+  PrismIcon          Icons
+  PrismModel         Model name display
+  PrismCost          Cost display
+  PrismError         Error messages
+  PrismWarning       Warning messages
+  PrismSuccess       Success messages
+
+==============================================================================
+18. HEALTH CHECK                                             *prism-health*
+
+Run `:checkhealth prism` to verify your setup.
+
+Checks performed:
+- Neovim version
+- Claude CLI availability and authentication
+- Required dependencies (nui.nvim)
+- Optional dependencies (snacks.nvim, plenary.nvim)
+- MCP server status
+- Configuration validation
+
+==============================================================================
+19. FAQ                                                           *prism-faq*
+
+Q: Claude CLI not found?
+A: Ensure `claude` is in your PATH. You can also set a custom command:
+>lua
+    require("prism").setup({
+      terminal = { cmd = "/path/to/claude" }
+    })
+<
+
+Q: How do I change the default model?
+A: Set it in your configuration:
+>lua
+    require("prism").setup({
+      claude = { model = "sonnet" }
+    })
+<
+
+Q: Terminal opens in wrong position?
+A: Configure the terminal position:
+>lua
+    require("prism").setup({
+      terminal = { position = "float", width = 0.6, height = 0.6 }
+    })
+<
+
+Q: How do I disable specific features?
+A: Use the features table:
+>lua
+    require("prism").setup({
+      features = { git = false, memory = false }
+    })
+<
+
+Q: Cost tracking seems wrong?
+A: Cost is estimated based on token counts. Actual billing may vary.
+   Reset with `:lua require("prism.cost").reset()`
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

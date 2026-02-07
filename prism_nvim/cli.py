@@ -1,0 +1,690 @@
+"""
+Prism CLI - Install and manage the Neovim Claude integration.
+
+Usage:
+    prism-nvim install    # Install plugin + configure MCP
+    prism-nvim start      # Start MCP server
+    prism-nvim status     # Check status
+    prism-nvim uninstall  # Remove everything
+"""
+
+import click
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+# Rich for pretty output
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich import print as rprint
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+
+console = Console() if HAS_RICH else None
+
+
+def echo(msg: str, style: str = ""):
+    """Print message with optional styling."""
+    if HAS_RICH and style:
+        rprint(f"[{style}]{msg}[/{style}]")
+    else:
+        click.echo(msg)
+
+
+def success(msg: str):
+    echo(f"✓ {msg}", "green")
+
+
+def error(msg: str):
+    echo(f"✗ {msg}", "red")
+
+
+def info(msg: str):
+    echo(f"• {msg}", "blue")
+
+
+def warn(msg: str):
+    echo(f"⚠ {msg}", "yellow")
+
+
+# Paths
+def get_plugin_source() -> Path:
+    """Get the source directory of the plugin (where the Lua files are)."""
+    # Check if we're in a development install or pip install
+    module_dir = Path(__file__).parent.parent
+
+    # Check for lua directory in parent (dev mode)
+    if (module_dir / "lua").exists():
+        return module_dir
+
+    # Check for shared data (pip install)
+    import site
+    for site_dir in site.getsitepackages() + [site.getusersitepackages()]:
+        shared = Path(site_dir).parent / "share" / "prism-nvim"
+        if shared.exists():
+            return shared
+
+    # Fallback to module directory
+    return module_dir
+
+
+def get_nvim_config_dir() -> Path:
+    """Get Neovim config directory."""
+    xdg_config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+    return Path(xdg_config) / "nvim"
+
+
+def get_nvim_data_dir() -> Path:
+    """Get Neovim data directory."""
+    xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    return Path(xdg_data) / "nvim"
+
+
+def get_claude_config_dir() -> Path:
+    """Get Claude Code config directory."""
+    return Path.home() / ".claude"
+
+
+def get_mcp_config_path() -> Path:
+    """Get Claude Code main config path (~/.claude.json)."""
+    return Path.home() / ".claude.json"
+
+
+@click.group()
+@click.version_option(version="0.1.0", prog_name="prism-nvim")
+def main():
+    """
+    Prism.nvim - The Ultimate Claude Code Integration for Neovim
+
+    Install and manage the MCP server that lets Claude control Neovim.
+    """
+    pass
+
+
+@main.command()
+@click.option("--nvim-socket", default="/tmp/nvim.sock",
+              help="Path for Neovim socket")
+@click.option("--plugin-only", is_flag=True,
+              help="Only install the Neovim plugin, skip MCP config")
+@click.option("--mcp-only", is_flag=True,
+              help="Only configure MCP, skip plugin install")
+def install(nvim_socket: str, plugin_only: bool, mcp_only: bool):
+    """
+    Install prism.nvim and configure Claude Code MCP.
+
+    This will:
+    1. Install the Neovim plugin to your config
+    2. Configure Claude Code to use the prism MCP server
+    3. Set up the Neovim socket connection
+    """
+    if HAS_RICH:
+        console.print(Panel.fit(
+            "[bold blue]Prism.nvim Installer[/]\n"
+            "Claude Code ↔ Neovim Integration",
+            border_style="blue"
+        ))
+
+    echo("")
+
+    # Check prerequisites
+    info("Checking prerequisites...")
+
+    # Check Neovim
+    nvim_version = shutil.which("nvim")
+    if nvim_version:
+        result = subprocess.run(["nvim", "--version"], capture_output=True, text=True)
+        version_line = result.stdout.split("\n")[0]
+        success(f"Neovim found: {version_line}")
+    else:
+        error("Neovim not found! Please install Neovim >= 0.10")
+        sys.exit(1)
+
+    # Check Claude Code
+    claude_version = shutil.which("claude")
+    if claude_version:
+        result = subprocess.run(["claude", "--version"], capture_output=True, text=True)
+        success(f"Claude Code found: {result.stdout.strip()}")
+    else:
+        warn("Claude Code CLI not found. Install it to use full features.")
+
+    # Check msgpack
+    try:
+        import msgpack
+        success("msgpack library available")
+    except ImportError:
+        warn("msgpack not installed. Installing...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "msgpack"])
+
+    echo("")
+
+    # Get source directory (needed for both plugin and hook install)
+    source_dir = get_plugin_source()
+
+    # Install Neovim plugin
+    if not mcp_only:
+        info("Installing Neovim plugin...")
+
+        nvim_config = get_nvim_config_dir()
+
+        # Create plugin spec for lazy.nvim
+        plugins_dir = nvim_config / "lua" / "plugins"
+        plugins_dir.mkdir(parents=True, exist_ok=True)
+
+        plugin_spec = plugins_dir / "prism.lua"
+
+        spec_content = f'''-- Prism.nvim - Claude Code Integration
+-- Auto-generated by prism-nvim installer
+
+return {{
+  {{
+    dir = "{source_dir}",
+    name = "prism.nvim",
+    lazy = false,
+    dependencies = {{
+      "MunifTanjim/nui.nvim",
+    }},
+    config = function()
+      require("prism").setup({{
+        -- MCP server is handled by Python, disable Lua server
+        mcp = {{
+          auto_start = false,
+        }},
+        -- Terminal settings
+        terminal = {{
+          provider = "native",
+          position = "vertical",
+          width = 0.4,
+          auto_start = true,  -- Auto-open Claude terminal on Neovim start
+        }},
+        -- Claude flags
+        claude = {{
+          model = nil,
+          continue_session = false,
+        }},
+      }})
+    end,
+    keys = {{
+      {{ "<leader>cc", "<cmd>Prism<cr>", desc = "Prism: Open Layout" }},
+      {{ "<leader>ct", "<cmd>PrismToggle<cr>", desc = "Prism: Toggle Terminal" }},
+      {{ "<leader>cs", "<cmd>PrismSend<cr>", mode = {{ "n", "v" }}, desc = "Prism: Send to Claude" }},
+      {{ "<leader>ca", "<cmd>PrismAction<cr>", mode = {{ "n", "v" }}, desc = "Prism: Code Actions" }},
+      {{ "<leader>cd", "<cmd>PrismDiff<cr>", desc = "Prism: Show Diff" }},
+      {{ "<leader>cm", "<cmd>PrismModel<cr>", desc = "Prism: Switch Model" }},
+      {{ "<C-\\\\>", "<cmd>PrismToggle<cr>", desc = "Toggle Prism Terminal" }},
+    }},
+  }},
+}}
+'''
+
+        plugin_spec.write_text(spec_content)
+        success(f"Plugin spec written to {plugin_spec}")
+
+        # Create autocommand to start nvim with socket
+        ftplugin_dir = nvim_config / "after" / "plugin"
+        ftplugin_dir.mkdir(parents=True, exist_ok=True)
+
+        socket_config = ftplugin_dir / "prism-socket.lua"
+        socket_content = '''-- Prism.nvim socket configuration
+-- Auto-generated by prism-nvim installer
+-- Robust multi-instance support via socket registry
+
+if vim.fn.has("nvim") == 1 then
+  local nvim_pid = vim.fn.getpid()
+
+  -- Use existing servername if already listening, otherwise create unique socket
+  local socket_path = vim.v.servername
+
+  if not socket_path or socket_path == "" then
+    -- Generate unique socket based on PID
+    socket_path = "/tmp/nvim-" .. nvim_pid .. ".sock"
+
+    -- Start listening on unique socket
+    pcall(function()
+      vim.fn.serverstart(socket_path)
+    end)
+  end
+
+  -- Store socket path for prism
+  vim.g.prism_socket = socket_path
+  vim.env.NVIM = socket_path
+
+  -- Register socket in the registry (so MCP can find us via process tree)
+  local registry_path = "/tmp/prism-socket-registry.json"
+
+  local function register_socket()
+    local registry = {}
+
+    -- Load existing registry
+    local f = io.open(registry_path, "r")
+    if f then
+      local content = f:read("*a")
+      f:close()
+      if content and content ~= "" then
+        local ok, data = pcall(vim.json.decode, content)
+        if ok and data then
+          registry = data
+        end
+      end
+    end
+
+    -- Add our entry
+    registry[tostring(nvim_pid)] = {
+      socket = socket_path,
+      registered_at = os.time(),
+    }
+
+    -- Write back
+    f = io.open(registry_path, "w")
+    if f then
+      f:write(vim.json.encode(registry))
+      f:close()
+    end
+  end
+
+  local function unregister_socket()
+    local registry = {}
+    local f = io.open(registry_path, "r")
+    if f then
+      local content = f:read("*a")
+      f:close()
+      local ok, data = pcall(vim.json.decode, content)
+      if ok and data then
+        registry = data
+      end
+    end
+
+    registry[tostring(nvim_pid)] = nil
+
+    f = io.open(registry_path, "w")
+    if f then
+      f:write(vim.json.encode(registry))
+      f:close()
+    end
+  end
+
+  -- Register on startup
+  register_socket()
+
+  -- Unregister on exit
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    callback = unregister_socket,
+  })
+
+  -- Override termopen to pass NVIM env AND register terminal PID
+  local original_termopen = vim.fn.termopen
+  vim.fn.termopen = function(cmd, opts)
+    opts = opts or {}
+    opts.env = opts.env or {}
+    opts.env.NVIM = socket_path
+    opts.env.NVIM_PID = tostring(nvim_pid)
+
+    local job_id = original_termopen(cmd, opts)
+
+    -- Register terminal's job PID in registry too
+    if job_id > 0 then
+      vim.defer_fn(function()
+        local term_pid = vim.fn.jobpid(job_id)
+        if term_pid and term_pid > 0 then
+          -- Add terminal PID to registry
+          local f = io.open(registry_path, "r")
+          local registry = {}
+          if f then
+            local content = f:read("*a")
+            f:close()
+            local ok, data = pcall(vim.json.decode, content)
+            if ok and data then registry = data end
+          end
+
+          registry[tostring(term_pid)] = {
+            socket = socket_path,
+            registered_at = os.time(),
+            parent_nvim = nvim_pid,
+          }
+
+          f = io.open(registry_path, "w")
+          if f then
+            f:write(vim.json.encode(registry))
+            f:close()
+          end
+        end
+      end, 100)
+    end
+
+    return job_id
+  end
+end
+'''
+        socket_config.write_text(socket_content)
+        success(f"Socket config written to {socket_config}")
+
+    echo("")
+
+    # Configure MCP
+    if not plugin_only:
+        info("Configuring Claude Code MCP...")
+
+        mcp_config_path = get_mcp_config_path()
+
+        # Load existing Claude config
+        if mcp_config_path.exists():
+            with open(mcp_config_path) as f:
+                claude_config = json.load(f)
+        else:
+            error(f"Claude config not found at {mcp_config_path}")
+            error("Please run Claude Code at least once to create the config.")
+            sys.exit(1)
+
+        # Ensure mcpServers exists at top level
+        if "mcpServers" not in claude_config:
+            claude_config["mcpServers"] = {}
+
+        # Add prism-nvim server
+        # -u: unbuffered stdout (required for MCP stdio protocol)
+        claude_config["mcpServers"]["prism-nvim"] = {
+            "type": "stdio",
+            "command": sys.executable,
+            "args": ["-u", "-m", "prism_nvim.mcp_server"],
+            "env": {}
+        }
+
+        # Write config back
+        with open(mcp_config_path, "w") as f:
+            json.dump(claude_config, f, indent=2)
+
+        success(f"Added prism-nvim MCP server to {mcp_config_path}")
+
+        # Add permissions to settings.json
+        settings_path = get_claude_config_dir() / "settings.json"
+        if settings_path.exists():
+            with open(settings_path) as f:
+                settings = json.load(f)
+        else:
+            settings = {}
+
+        if "permissions" not in settings:
+            settings["permissions"] = {"allow": []}
+        if "allow" not in settings["permissions"]:
+            settings["permissions"]["allow"] = []
+
+        permission = "mcp__prism-nvim__*"
+        if permission not in settings["permissions"]["allow"]:
+            settings["permissions"]["allow"].append(permission)
+            success(f"Added prism-nvim permissions")
+        else:
+            info("Permissions already configured")
+
+        # Add diff preview hook
+        if "hooks" not in settings:
+            settings["hooks"] = {}
+        if "PreToolUse" not in settings["hooks"]:
+            settings["hooks"]["PreToolUse"] = []
+
+        # Check if prism hook already exists
+        hook_exists = any(
+            "prism-diff-hook" in str(h.get("hooks", []))
+            for h in settings["hooks"]["PreToolUse"]
+        )
+
+        if not hook_exists:
+            hook_script = source_dir / "scripts" / "prism-diff-hook.py"
+            settings["hooks"]["PreToolUse"].append({
+                "matcher": "Edit",
+                "hooks": [{
+                    "type": "command",
+                    "command": f"python3 {hook_script}"
+                }]
+            })
+            success("Added diff preview hook (shows edits in Neovim)")
+        else:
+            info("Diff preview hook already configured")
+
+        # Write settings
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=2)
+
+    echo("")
+
+    # Print summary
+    if HAS_RICH:
+        table = Table(title="Installation Complete")
+        table.add_column("Component", style="cyan")
+        table.add_column("Status", style="green")
+        table.add_column("Location")
+
+        if not mcp_only:
+            table.add_row("Neovim Plugin", "✓ Installed", str(plugins_dir / "prism.lua"))
+            table.add_row("Socket Config", "✓ Configured", str(socket_config))
+
+        if not plugin_only:
+            table.add_row("MCP Server", "✓ Configured", str(mcp_config_path))
+
+        console.print(table)
+    else:
+        echo("\n=== Installation Complete ===")
+        if not mcp_only:
+            echo(f"  Neovim Plugin: {plugins_dir / 'prism.lua'}")
+        if not plugin_only:
+            echo(f"  MCP Config: {mcp_config_path}")
+
+    echo("")
+    echo("Next steps:", "bold")
+    echo("  1. Restart Neovim: nvim")
+    echo("  2. Run :Lazy sync to load the plugin")
+    echo("  3. Claude terminal opens automatically!")
+    echo("")
+    echo("Keybindings:", "bold")
+    echo("  Ctrl+\\   - Toggle Claude terminal")
+    echo("  <leader>ct - Toggle Claude terminal")
+    echo("  <leader>cs - Send selection to Claude")
+    echo("")
+    echo("Pass Claude flags after '--':", "bold")
+    echo("  nvim -- --model opus          # Use specific model")
+    echo("  nvim -- --continue            # Continue last session")
+    echo("  nvim -- --resume <id>         # Resume specific session")
+    echo("  nvim file.py -- --model haiku --chrome  # Multiple flags")
+    echo("")
+    echo("Shell aliases (add to .zshrc/.bashrc):", "dim")
+    echo(f"  source {source_dir}/shell/prism.sh", "dim")
+    echo("  nvco  # nvim with opus", "dim")
+    echo("  nvc   # nvim with --continue", "dim")
+
+
+@main.command()
+@click.option("--nvim-socket", default="/tmp/nvim.sock",
+              help="Path to Neovim socket")
+@click.option("--foreground", "-f", is_flag=True,
+              help="Run in foreground (don't daemonize)")
+def start(nvim_socket: str, foreground: bool):
+    """
+    Start the MCP server.
+
+    The server connects to Neovim and exposes IDE control to Claude.
+    """
+    info(f"Starting Prism MCP server...")
+    info(f"Neovim socket: {nvim_socket}")
+
+    os.environ["NVIM"] = nvim_socket
+
+    if foreground:
+        # Run in foreground
+        from .mcp_server import main as server_main
+        server_main()
+    else:
+        # Run as background process
+        import subprocess
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "prism_nvim.mcp_server"],
+            env={**os.environ, "NVIM": nvim_socket},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        success(f"MCP server started (PID: {proc.pid})")
+        echo("  Log file: /tmp/prism-mcp.log")
+
+
+@main.command()
+def status():
+    """
+    Check the status of prism-nvim components.
+    """
+    echo("Prism.nvim Status", "bold")
+    echo("")
+
+    # Check Neovim plugin
+    nvim_config = get_nvim_config_dir()
+    plugin_spec = nvim_config / "lua" / "plugins" / "prism.lua"
+
+    if plugin_spec.exists():
+        success("Neovim plugin: Installed")
+    else:
+        warn("Neovim plugin: Not installed")
+
+    # Check MCP config
+    mcp_config = get_mcp_config_path()
+    if mcp_config.exists():
+        with open(mcp_config) as f:
+            config = json.load(f)
+        if "prism-nvim" in config.get("mcpServers", {}):
+            success("MCP server: Configured")
+        else:
+            warn("MCP server: Not configured")
+    else:
+        warn("MCP config: Not found")
+
+    # Check Neovim sockets
+    import glob
+    nvim_env = os.environ.get("NVIM")
+    sockets = glob.glob("/tmp/nvim-*.sock") + ["/tmp/nvim.sock"]
+    active_sockets = [s for s in sockets if os.path.exists(s)]
+
+    if active_sockets:
+        success(f"Neovim socket: Active ({active_sockets[0]})")
+        if len(active_sockets) > 1:
+            info(f"  Multiple sockets found: {len(active_sockets)}")
+            for s in active_sockets:
+                marker = " (current)" if s == nvim_env else ""
+                info(f"    - {s}{marker}")
+    elif nvim_env:
+        warn(f"Neovim socket: Not found ({nvim_env})")
+    else:
+        warn("Neovim socket: Not found (no NVIM env set)")
+
+    # Check if Neovim is running
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "nvim"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            pids = result.stdout.strip().split("\n")
+            success(f"Neovim processes: {len(pids)} running")
+        else:
+            info("Neovim: Not running")
+    except:
+        pass
+
+
+@main.command()
+@click.option("--keep-plugin", is_flag=True,
+              help="Keep the Neovim plugin, only remove MCP config")
+def uninstall(keep_plugin: bool):
+    """
+    Uninstall prism-nvim.
+
+    Removes the Neovim plugin and MCP configuration.
+    """
+    echo("Uninstalling Prism.nvim...", "bold")
+    echo("")
+
+    # Remove plugin
+    if not keep_plugin:
+        nvim_config = get_nvim_config_dir()
+        plugin_spec = nvim_config / "lua" / "plugins" / "prism.lua"
+        socket_config = nvim_config / "after" / "plugin" / "prism-socket.lua"
+
+        if plugin_spec.exists():
+            plugin_spec.unlink()
+            success("Removed Neovim plugin spec")
+
+        if socket_config.exists():
+            socket_config.unlink()
+            success("Removed socket configuration")
+
+    # Remove MCP config
+    mcp_config = get_mcp_config_path()
+    if mcp_config.exists():
+        with open(mcp_config) as f:
+            config = json.load(f)
+
+        if "prism-nvim" in config.get("mcpServers", {}):
+            del config["mcpServers"]["prism-nvim"]
+            with open(mcp_config, "w") as f:
+                json.dump(config, f, indent=2)
+            success("Removed MCP server configuration")
+
+    # Remove permissions
+    settings_path = get_claude_config_dir() / "settings.json"
+    if settings_path.exists():
+        with open(settings_path) as f:
+            settings = json.load(f)
+
+        permission = "mcp__prism-nvim__*"
+        if permission in settings.get("permissions", {}).get("allow", []):
+            settings["permissions"]["allow"].remove(permission)
+            with open(settings_path, "w") as f:
+                json.dump(settings, f, indent=2)
+            success("Removed prism-nvim permissions")
+
+    echo("")
+    success("Uninstall complete!")
+
+
+@main.command()
+def test():
+    """
+    Test the connection to Neovim.
+    """
+    info("Testing Neovim connection...")
+
+    socket_path = os.environ.get("NVIM", "/tmp/nvim.sock")
+
+    try:
+        from .nvim_client import NeovimClient
+        client = NeovimClient(socket_path)
+        client.connect()
+
+        # Get Neovim info
+        version = client.call("nvim_get_api_info")
+        success(f"Connected to Neovim API v{version[0]}")
+
+        # Get current buffer
+        buf = client.get_current_buffer()
+        info(f"Current buffer: {buf.name or '[No Name]'}")
+        info(f"Filetype: {buf.filetype or 'none'}")
+
+        # Get cursor
+        cursor = client.get_cursor()
+        info(f"Cursor: line {cursor[0]}, col {cursor[1]}")
+
+        client.disconnect()
+        echo("")
+        success("Connection test passed!")
+
+    except Exception as e:
+        error(f"Connection failed: {e}")
+        echo("")
+        echo("Make sure Neovim is running with:", "dim")
+        echo(f"  nvim --listen {socket_path}", "dim")
+
+
+if __name__ == "__main__":
+    main()

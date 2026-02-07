@@ -1,0 +1,27 @@
+---@module 'prism.simple'
+--- Simple Prism setup - just require this for minimal Claude integration
+---
+--- Usage:
+---   require("prism.simple").setup()
+---
+--- Or with options:
+---   require("prism.simple").setup({
+---     toggle_key = "<C-;>",
+---     terminal_width = 0.4,
+---   })
+---
+--- Keybindings:
+---   Ctrl+;      Toggle Claude terminal (works everywhere)
+---   Ctrl+\ Ctrl+\  Exit terminal mode
+---   Ctrl+h/j/k/l   Window navigation from terminal
+---   <leader>cs     Send selection/context to Claude
+---   ]c             Next changed file
+---   <leader>cc     List changed files
+---
+--- Commands:
+---   :Claude        Toggle terminal
+---   :ClaudeSend    Send text/context
+---   :ClaudeNav     List changed files
+---   :ClaudeClear   Clear changed files list
+
+return require("prism.core")
