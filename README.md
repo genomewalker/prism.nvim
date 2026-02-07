@@ -7,6 +7,7 @@ Control Neovim with natural language. Edit files with vim commands instead of se
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9+-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
+[![Docs](https://img.shields.io/badge/Docs-Website-blue)](https://kbd606.github.io/prism.nvim/)
 
 ---
 
@@ -238,6 +239,6 @@ MIT
 *Built for developers who want Claude to actually control their editor.*
 
 **Links**:
-- [Documentation Website](https://genomewalker.github.io/prism.nvim/)
+- [Documentation Website](https://kbd606.github.io/prism.nvim/)
 - [Claude Code Skills](https://docs.anthropic.com/en/docs/claude-code/slash-commands)
 - [Claude Code MCP](https://docs.anthropic.com/en/docs/claude-code/mcp)
