@@ -81,8 +81,45 @@ else
 fi
 ```
 
+**After git pull, check if shell functions need updating:**
+
+```bash
+PRISM_DIR="$HOME/.local/share/prism.nvim"
+REF_BASH="$PRISM_DIR/scripts/shell/nvc.bash"
+
+for rc in ~/.zshrc ~/.bashrc; do
+  if [ -f "$rc" ] && grep -q "nvc()" "$rc"; then
+    installed=$(sed -n '/^# Prism.nvim helpers/,/^alias nvco=/p' "$rc")
+    ref_content=$(cat "$REF_BASH")
+    if [ "$installed" != "$ref_content" ]; then
+      echo "shell_$(basename $rc):outdated"
+    fi
+  fi
+done
+```
+
+If any shell functions are outdated, use AskUserQuestion:
+
+```
+question: "Your nvc shell function is outdated. Update to latest version?"
+header: "Update nvc"
+options:
+  - label: "Yes, update (Recommended)"
+    description: "Replace old nvc function with latest version"
+  - label: "No, keep current"
+    description: "Keep your existing function"
+```
+
+If user says yes, update the function:
+```bash
+sed -i.bak '/^# Prism.nvim helpers/,/^alias nvco=/d' ~/.bashrc  # or ~/.zshrc
+cat "$PRISM_DIR/scripts/shell/nvc.bash" >> ~/.bashrc  # or ~/.zshrc
+echo "Shell function updated. Run: source ~/.bashrc"
+```
+
 After running, tell the user:
 - If version changed: **Restart Claude Code** to load updated MCP server
+- If shell updated: **Source your rc file** or restart terminal
 - Check the changelog for new features
 
 ---
@@ -111,7 +148,41 @@ python3 -c "import msgpack" 2>/dev/null && echo "msgpack:ok" || echo "msgpack:mi
 grep -q '"prism-nvim"' ~/.claude/settings.json 2>/dev/null && echo "mcp:configured" || echo "mcp:missing"
 [ -L ~/.claude/rules/prism-nvim.md ] && echo "rules:linked" || echo "rules:missing"
 [ -f ~/.config/nvim/lua/plugins/prism.lua ] && echo "nvim_config:exists" || echo "nvim_config:missing"
-grep -q "nvc()" ~/.zshrc 2>/dev/null && echo "shell_zsh:configured" || grep -q "nvc()" ~/.bashrc 2>/dev/null && echo "shell_bash:configured" || echo "shell:missing"
+```
+
+```bash
+# Check shell aliases with md5sum comparison against reference
+PRISM_DIR="$HOME/.local/share/prism.nvim"
+REF_HASH=$(md5sum "$PRISM_DIR/scripts/shell/nvc.bash" 2>/dev/null | cut -d' ' -f1)
+
+check_shell_func() {
+  local rc="$1"
+  local name="$2"
+  if [ ! -f "$rc" ]; then return; fi
+  if ! grep -q "nvc()" "$rc" 2>/dev/null; then return; fi
+
+  # Extract nvc function block from rc file
+  local installed=$(sed -n '/^# Prism.nvim helpers/,/^alias nvco=/p' "$rc" 2>/dev/null)
+  if [ -z "$installed" ]; then
+    # Try alternate extraction - just the function
+    installed=$(sed -n '/^nvc()/,/^}/p' "$rc" 2>/dev/null)
+  fi
+
+  if [ -n "$installed" ]; then
+    local inst_hash=$(echo "$installed" | md5sum | cut -d' ' -f1)
+    if [ "$inst_hash" = "$REF_HASH" ]; then
+      echo "shell_$name:current"
+    else
+      echo "shell_$name:outdated"
+    fi
+  else
+    echo "shell_$name:configured"
+  fi
+}
+
+check_shell_func ~/.zshrc zsh
+check_shell_func ~/.bashrc bash
+grep -q "nvc()" ~/.zshrc ~/.bashrc 2>/dev/null || echo "shell:missing"
 ```
 
 Also try MCP connection: `mcp__prism-nvim__get_current_file`
@@ -128,10 +199,11 @@ Present results as:
 | MCP server | Configured / Missing |
 | Rules | Linked / Missing |
 | Nvim config | Exists / Missing |
-| Shell alias | Configured / Missing |
+| Shell alias | Current / Outdated / Missing |
 | MCP connection | Connected / Not connected |
 
 If any component is missing, suggest running `/prism install`.
+If shell alias shows "Outdated", suggest running `/prism install` to update the nvc function.
 
 ---
 
@@ -260,9 +332,34 @@ ln -sf ~/.local/share/prism.nvim/CLAUDE.md ~/.claude/rules/prism-nvim.md
 echo "Rules linked"
 ```
 
-### Step 7: Add Shell Aliases
+### Step 7: Add or Update Shell Aliases
 
-Use AskUserQuestion to ask which shell the user uses:
+**First, check existing shell functions and compare with reference:**
+
+```bash
+PRISM_DIR="$HOME/.local/share/prism.nvim"
+REF_BASH="$PRISM_DIR/scripts/shell/nvc.bash"
+REF_FISH="$PRISM_DIR/scripts/shell/nvc.fish"
+
+# Check each shell rc file
+for rc in ~/.zshrc ~/.bashrc; do
+  if [ -f "$rc" ] && grep -q "nvc()" "$rc"; then
+    # Extract installed function
+    installed=$(sed -n '/^# Prism.nvim helpers/,/^alias nvco=/p' "$rc")
+    ref_content=$(cat "$REF_BASH")
+
+    if [ "$installed" != "$ref_content" ]; then
+      echo "shell_$(basename $rc):outdated"
+    else
+      echo "shell_$(basename $rc):current"
+    fi
+  else
+    echo "shell_$(basename $rc):missing"
+  fi
+done
+```
+
+**If missing:** Use AskUserQuestion to ask which shell:
 
 ```
 question: "Which shell do you use?"
@@ -278,53 +375,41 @@ options:
     description: "Don't add shell aliases"
 ```
 
-**Check if nvc already exists** before adding:
-```bash
-grep -q "nvc()" ~/.zshrc 2>/dev/null && echo "nvc already in zshrc"
-grep -q "nvc()" ~/.bashrc 2>/dev/null && echo "nvc already in bashrc"
+**If outdated:** Use AskUserQuestion to offer update:
+
+```
+question: "Your nvc shell function is outdated. Update to latest version?"
+header: "Update"
+options:
+  - label: "Yes, update it (Recommended)"
+    description: "Replace old nvc function with latest version"
+  - label: "No, keep current"
+    description: "Keep your existing function (may miss bug fixes)"
 ```
 
-Only append if not already present:
-
-**For Bash/Zsh** (`~/.bashrc` or `~/.zshrc`):
+**To update outdated function:** Remove old block and append new:
 
 ```bash
-# Prism.nvim helpers
-nvc() {
-  local claude_args=""
-  while [[ $# -gt 0 && "$1" == -* ]]; do
-    if [[ "$1" == "--model" || "$1" == "--allowedTools" || "$1" == "--disallowedTools" ]]; then
-      claude_args="$claude_args $1 $2"
-      shift 2
-    else
-      claude_args="$claude_args $1"
-      shift
-    fi
-  done
-  CLAUDE_ARGS="$claude_args" nvim "$@"
-}
-alias nvco='nvc --model opus'
+# Remove old prism block from rc file
+sed -i.bak '/^# Prism.nvim helpers/,/^alias nvco=/d' ~/.bashrc  # or ~/.zshrc
+
+# Append new version
+cat "$PRISM_DIR/scripts/shell/nvc.bash" >> ~/.bashrc  # or ~/.zshrc
+```
+
+**For new installs, append the reference file:**
+
+```bash
+# For Bash/Zsh - append the reference file
+cat "$PRISM_DIR/scripts/shell/nvc.bash" >> ~/.bashrc  # or ~/.zshrc
 ```
 
 **For Fish** (`~/.config/fish/functions/nvc.fish`):
 
-```fish
-function nvc
-    set -l claude_args ""
-    while test (count $argv) -gt 0
-        switch $argv[1]
-            case --model
-                set claude_args "$claude_args $argv[1] $argv[2]"
-                set argv $argv[3..-1]
-            case --continue --resume -c -r
-                set claude_args "$claude_args $argv[1]"
-                set argv $argv[2..-1]
-            case '*'
-                break
-        end
-    end
-    CLAUDE_ARGS="$claude_args" nvim $argv
-end
+```bash
+# Copy reference file for Fish
+mkdir -p ~/.config/fish/functions
+cp "$PRISM_DIR/scripts/shell/nvc.fish" ~/.config/fish/functions/nvc.fish
 ```
 
 ---
