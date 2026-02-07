@@ -624,11 +624,11 @@ footer {
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
-        <h4>Add the plugin</h4>
-        <p>Run this in Claude Code to register the plugin from GitHub:</p>
+        <h4>Add the marketplace</h4>
+        <p>Run this in Claude Code to register the plugin marketplace (one-time):</p>
         <div class="code-block">
-          <code>/plugins:add <span class="url">https://github.com/genomewalker/prism.nvim</span></code>
-          <button class="copy" onclick="copyCmd(this, '/plugins:add https://github.com/genomewalker/prism.nvim')">copy</button>
+          <code>/plugin add-marketplace <span class="url">genomewalker/prism.nvim</span></code>
+          <button class="copy" onclick="copyCmd(this, '/plugin add-marketplace genomewalker/prism.nvim')">copy</button>
         </div>
       </div>
     </div>
@@ -636,11 +636,11 @@ footer {
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-content">
-        <h4>Install</h4>
+        <h4>Install the plugin</h4>
         <p>Now install everything—Neovim plugin, MCP server, shell helpers:</p>
         <div class="code-block">
-          <code>/prism install</code>
-          <button class="copy" onclick="copyCmd(this, '/prism install')">copy</button>
+          <code>/plugin install <span class="url">prism-nvim@genomewalker-prism-nvim</span></code>
+          <button class="copy" onclick="copyCmd(this, '/plugin install prism-nvim@genomewalker-prism-nvim')">copy</button>
         </div>
         <p class="step-note">Restart Claude Code and Neovim. Press <kbd>Ctrl+;</kbd> to toggle Claude.</p>
       </div>
