@@ -1,7 +1,7 @@
 {
   "name": "prism-nvim",
   "description": "Claude Code + Neovim integration with 10-50x token savings via MCP tools",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "author": {
     "name": "Antonio Fernandez-Guerra",
     "url": "https://github.com/genomewalker"
