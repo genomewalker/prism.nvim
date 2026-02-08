@@ -8,12 +8,30 @@ to fully control a Neovim instance as an IDE.
 import asyncio
 import json
 import logging
+import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
 from .nvim_client import NeovimClient
+
+
+def _path_matches(buf_name: str, path: str) -> bool:
+    """Check if a buffer name matches a path.
+
+    Avoids false positives from simple endswith() matching.
+    For example, "utils.py" should NOT match "/some/other_utils.py".
+    """
+    if buf_name == path:
+        return True
+    # Check if path matches the end with a path separator before it
+    if buf_name.endswith(path) and buf_name[-len(path) - 1] == os.sep:
+        return True
+    # Also check basename match for simple filenames
+    if os.sep not in path and os.path.basename(buf_name) == path:
+        return True
+    return False
 
 
 class BytesEncoder(json.JSONEncoder):
@@ -99,6 +117,14 @@ Use this when the user says:
                     "path": {
                         "type": "string",
                         "description": "Path to the file to open (absolute or relative to cwd)",
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number to jump to after opening (1-indexed)",
+                    },
+                    "column": {
+                        "type": "integer",
+                        "description": "Column number to jump to after opening (1-indexed)",
                     },
                     "keep_focus": {
                         "type": "boolean",
@@ -1645,7 +1671,9 @@ Modes:
 
     def _handle_save_file(self, path: Optional[str] = None) -> dict:
         """Save current file."""
-        self.nvim.save_file(path)
+        success = self.nvim.save_file(path)
+        if not success:
+            return {"success": False, "error": f"Buffer not found: {path}"}
         self._narrate("Saving file (:w)")
         return {"success": True}
 
@@ -1655,7 +1683,7 @@ Modes:
         if path:
             # Find buffer by path
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     self.nvim.close_buffer(buf.id, force)
                     self._narrate(f"Closing buffer ({cmd})")
                     return {"success": True}
@@ -1680,7 +1708,7 @@ Modes:
         if path:
             # First try to find in open buffers
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     content = self.nvim.get_buffer_content(buf.id)
                     return {"content": content}
 
@@ -1711,7 +1739,7 @@ Modes:
         if path:
             # First try to find in open buffers
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     start = start_line - 1
                     end_idx = end_line if end_line == -1 else end_line
                     lines = self.nvim.get_buffer_lines(start, end_idx, buf.id)
@@ -1752,7 +1780,7 @@ Modes:
         buf_id = None
         if path:
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     buf_id = buf.id
                     break
 
@@ -1793,7 +1821,7 @@ Modes:
         buf_id = None
         if path:
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     buf_id = buf.id
                     break
 
@@ -1825,7 +1853,7 @@ Modes:
         buf_id = None
         if path:
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     buf_id = buf.id
                     break
 
@@ -1913,7 +1941,7 @@ Modes:
         buf_id = None
         if path:
             for buf in self.nvim.get_buffers():
-                if buf.name.endswith(path) or buf.name == path:
+                if _path_matches(buf.name, path):
                     buf_id = buf.id
                     break
 

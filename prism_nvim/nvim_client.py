@@ -19,6 +19,23 @@ except ImportError:
     HAS_MSGPACK = False
 
 
+def _path_matches(buf_name: str, path: str) -> bool:
+    """Check if a buffer name matches a path.
+
+    Avoids false positives from simple endswith() matching.
+    For example, "utils.py" should NOT match "/some/other_utils.py".
+    """
+    if buf_name == path:
+        return True
+    # Check if path matches the end with a path separator before it
+    if buf_name.endswith(path) and buf_name[-len(path) - 1] == os.sep:
+        return True
+    # Also check basename match for simple filenames
+    if os.sep not in path and os.path.basename(buf_name) == path:
+        return True
+    return False
+
+
 @dataclass
 class Buffer:
     """Represents a Neovim buffer."""
@@ -338,16 +355,7 @@ class NeovimClient:
         current_win = self.call("nvim_get_current_win")
 
         # Find a non-terminal window to open the file in
-        windows = self.call("nvim_list_wins")
-        editor_win = None
-        for win in windows:
-            buf = self.call("nvim_win_get_buf", win)
-            buftype = self.call("nvim_get_option_value", "buftype", {"buf": buf})
-            bufname = self.call("nvim_buf_get_name", buf)
-            # Skip terminal buffers and prism:// buffers
-            if buftype != "terminal" and not bufname.startswith("prism://"):
-                editor_win = win
-                break
+        editor_win = self._find_editor_window()
 
         if editor_win:
             # Switch to editor window and open file
@@ -365,12 +373,16 @@ class NeovimClient:
 
         return buf
 
-    def save_file(self, filepath: Optional[str] = None) -> None:
-        """Save a buffer. If filepath provided, finds and saves that buffer."""
+    def save_file(self, filepath: Optional[str] = None) -> bool:
+        """Save a buffer. If filepath provided, finds and saves that buffer.
+
+        Returns:
+            True if save succeeded, False if buffer not found.
+        """
         if filepath:
             # Find buffer by path and save it directly
             for buf in self.get_buffers():
-                if buf.name.endswith(filepath) or buf.name == filepath:
+                if _path_matches(buf.name, filepath):
                     # Switch to editor window, save buffer, switch back
                     current_win = self.call("nvim_get_current_win")
                     editor_win = self._find_editor_window()
@@ -382,9 +394,9 @@ class NeovimClient:
                     else:
                         # No editor window, just try to write the buffer
                         self.command(f"silent! buffer {buf.id} | write | buffer #")
-                    return
+                    return True
             # Buffer not found - file might not be open, nothing to save
-            return
+            return False
         else:
             # Save current buffer in editor window
             editor_win = self._find_editor_window()
@@ -395,6 +407,7 @@ class NeovimClient:
                 self.call("nvim_set_current_win", current_win)
             else:
                 self.command("write")
+            return True
 
     def close_buffer(self, buf_id: Optional[int] = None, force: bool = False) -> None:
         """Close a buffer."""

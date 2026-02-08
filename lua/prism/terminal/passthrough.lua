@@ -183,8 +183,8 @@ function M.setup(bufnr)
 	-- Mouse click positions cursor but does NOT auto-enter insert mode
 	vim.keymap.set("n", "<LeftMouse>", function()
 		local mouse = vim.fn.getmousepos()
-		if mouse and mouse.line > 0 then
-			pcall(vim.api.nvim_win_set_cursor, 0, { mouse.line, mouse.column - 1 })
+		if mouse and mouse.line > 0 and mouse.winid > 0 then
+			pcall(vim.api.nvim_win_set_cursor, mouse.winid, { mouse.line, mouse.column - 1 })
 		end
 		-- Stay in normal mode for copying/selecting
 	end, {
@@ -194,16 +194,30 @@ function M.setup(bufnr)
 		desc = "Position cursor (stay in normal mode)",
 	})
 
-	-- Override 'i' to clear the explicit exit flag
-	vim.keymap.set("n", "i", function()
-		vim.b[bufnr].prism_explicit_exit = false
-		vim.cmd("startinsert")
-	end, {
-		buffer = bufnr,
-		noremap = true,
-		silent = true,
-		desc = "Enter terminal insert mode",
-	})
+	-- Override insert mode keys to clear the explicit exit flag
+	local insert_keys = {
+		{ key = "i", cmd = "startinsert" },
+		{ key = "a", cmd = "startinsert!" }, -- append after cursor
+		{ key = "A", cmd = "startinsert!" }, -- append at end of line
+		{ key = "o", cmd = "startinsert!" }, -- open below (just enters insert)
+		{ key = "O", cmd = "startinsert!" }, -- open above (just enters insert)
+		{ key = "I", cmd = "startinsert" }, -- insert at beginning
+		{ key = "s", cmd = "startinsert" }, -- substitute char
+		{ key = "S", cmd = "startinsert" }, -- substitute line
+		{ key = "C", cmd = "startinsert!" }, -- change to end of line
+	}
+
+	for _, mapping in ipairs(insert_keys) do
+		vim.keymap.set("n", mapping.key, function()
+			vim.b[bufnr].prism_explicit_exit = false
+			vim.cmd(mapping.cmd)
+		end, {
+			buffer = bufnr,
+			noremap = true,
+			silent = true,
+			desc = "Enter terminal insert mode",
+		})
+	end
 
 	-- Auto-enter insert mode when focusing buffer (but not after explicit exit)
 	vim.api.nvim_create_autocmd("BufEnter", {

@@ -151,9 +151,9 @@ grep -q '"prism-nvim"' ~/.claude/settings.json 2>/dev/null && echo "mcp:configur
 ```
 
 ```bash
-# Check shell aliases with md5sum comparison against reference
+# Check shell aliases by comparing content directly (portable, works on macOS/Linux)
 PRISM_DIR="$HOME/.local/share/prism.nvim"
-REF_HASH=$(md5sum "$PRISM_DIR/scripts/shell/nvc.bash" 2>/dev/null | cut -d' ' -f1)
+REF_BASH="$PRISM_DIR/scripts/shell/nvc.bash"
 
 check_shell_func() {
   local rc="$1"
@@ -169,8 +169,9 @@ check_shell_func() {
   fi
 
   if [ -n "$installed" ]; then
-    local inst_hash=$(echo "$installed" | md5sum | cut -d' ' -f1)
-    if [ "$inst_hash" = "$REF_HASH" ]; then
+    # Compare content directly instead of using hashes
+    local ref_content=$(cat "$REF_BASH")
+    if [ "$installed" = "$ref_content" ]; then
       echo "shell_$name:current"
     else
       echo "shell_$name:outdated"
@@ -404,12 +405,13 @@ cat "$PRISM_DIR/scripts/shell/nvc.bash" >> ~/.bashrc  # or ~/.zshrc
 cat "$PRISM_DIR/scripts/shell/nvc.bash" >> ~/.bashrc  # or ~/.zshrc
 ```
 
-**For Fish** (`~/.config/fish/functions/nvc.fish`):
+**For Fish** (`~/.config/fish/functions/nvc.fish` and `nvco.fish`):
 
 ```bash
-# Copy reference file for Fish
+# Copy reference files for Fish
 mkdir -p ~/.config/fish/functions
 cp "$PRISM_DIR/scripts/shell/nvc.fish" ~/.config/fish/functions/nvc.fish
+cp "$PRISM_DIR/scripts/shell/nvco.fish" ~/.config/fish/functions/nvco.fish
 ```
 
 ---
