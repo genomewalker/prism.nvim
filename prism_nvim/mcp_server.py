@@ -1670,37 +1670,67 @@ Modes:
         return {"success": True, "path": path, "buffer_id": buf.id}
 
     def _handle_get_buffer_content(self, path: Optional[str] = None) -> dict:
-        """Get buffer content."""
-        buf_id = None
+        """Get buffer content. If path specified but not in buffer, reads from disk."""
         if path:
+            # First try to find in open buffers
             for buf in self.nvim.get_buffers():
                 if buf.name.endswith(path) or buf.name == path:
-                    buf_id = buf.id
-                    break
+                    content = self.nvim.get_buffer_content(buf.id)
+                    return {"content": content}
 
-        content = self.nvim.get_buffer_content(buf_id)
+            # Not in buffer - read from disk
+            try:
+                filepath = Path(path)
+                if not filepath.is_absolute():
+                    filepath = Path(self.nvim.call("nvim_call_function", "getcwd", [])) / path
+                if filepath.exists():
+                    content = filepath.read_text()
+                    return {"content": content}
+                else:
+                    return {"error": f"File not found: {path}"}
+            except Exception as e:
+                return {"error": f"Failed to read file: {e}"}
+
+        # No path - read current buffer
+        content = self.nvim.get_buffer_content()
         return {"content": content}
 
     def _handle_get_buffer_lines(
         self, path: Optional[str] = None, start_line: int = 1, end_line: int = -1
     ) -> dict:
-        """Get specific lines."""
-        # Ensure integer types (JSON might send strings)
+        """Get specific lines. If path specified but not in buffer, reads from disk."""
         start_line = int(start_line) if start_line is not None else 1
         end_line = int(end_line) if end_line is not None else -1
 
-        buf_id = None
         if path:
+            # First try to find in open buffers
             for buf in self.nvim.get_buffers():
                 if buf.name.endswith(path) or buf.name == path:
-                    buf_id = buf.id
-                    break
+                    start = start_line - 1
+                    end_idx = end_line if end_line == -1 else end_line
+                    lines = self.nvim.get_buffer_lines(start, end_idx, buf.id)
+                    return {"lines": lines, "start_line": start_line, "count": len(lines)}
 
-        # Convert to 0-indexed
+            # Not in buffer - read from disk
+            try:
+                filepath = Path(path)
+                if not filepath.is_absolute():
+                    filepath = Path(self.nvim.call("nvim_call_function", "getcwd", [])) / path
+                if filepath.exists():
+                    all_lines = filepath.read_text().splitlines()
+                    start = start_line - 1
+                    end_idx = end_line if end_line == -1 else end_line
+                    lines = all_lines[start:end_idx] if end_idx != -1 else all_lines[start:]
+                    return {"lines": lines, "start_line": start_line, "count": len(lines)}
+                else:
+                    return {"error": f"File not found: {path}"}
+            except Exception as e:
+                return {"error": f"Failed to read file: {e}"}
+
+        # No path - read current buffer
         start = start_line - 1
         end_idx = end_line if end_line == -1 else end_line
-
-        lines = self.nvim.get_buffer_lines(start, end_idx, buf_id)
+        lines = self.nvim.get_buffer_lines(start, end_idx)
         return {"lines": lines, "start_line": start_line, "count": len(lines)}
 
     def _handle_set_buffer_content(
