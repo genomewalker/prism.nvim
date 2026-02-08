@@ -14,7 +14,7 @@
 
 **See every edit happen.** Claude opens files, jumps to lines, and makes changes right in front of you. Full undo support - just press `u`.
 
-**Save 10-50x tokens.** Vim commands are tiny (`%s/old/new/g` = 15 tokens) vs Claude's Edit tool (~2000 tokens). Your context window lasts longer.
+**65+ MCP tools.** Harpoon, Trouble, Spectre, LSP, Git - all controllable by voice. Pin files, find TODOs, bulk replace, fix errors.
 
 **No vim required.** Just talk: "go to line 42", "fix this error", "commit with message X". Prism translates.
 
