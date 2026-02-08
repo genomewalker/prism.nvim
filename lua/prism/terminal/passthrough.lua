@@ -180,18 +180,21 @@ function M.setup(bufnr)
 	-- Track explicit exit state - if user presses Ctrl+\ Ctrl+\, respect their choice
 	vim.b[bufnr].prism_explicit_exit = false
 
-	-- Mouse click positions cursor but does NOT auto-enter insert mode
+	-- Mouse click: enter insert mode unless user explicitly exited
 	vim.keymap.set("n", "<LeftMouse>", function()
 		local mouse = vim.fn.getmousepos()
 		if mouse and mouse.line > 0 and mouse.winid > 0 then
 			pcall(vim.api.nvim_win_set_cursor, mouse.winid, { mouse.line, mouse.column - 1 })
 		end
-		-- Stay in normal mode for copying/selecting
+		-- Enter insert mode unless user explicitly exited with Ctrl+\ Ctrl+\
+		if not vim.b[bufnr].prism_explicit_exit then
+			vim.cmd("startinsert")
+		end
 	end, {
 		buffer = bufnr,
 		noremap = true,
 		silent = true,
-		desc = "Position cursor (stay in normal mode)",
+		desc = "Position cursor and enter insert mode",
 	})
 
 	-- Override insert mode keys to clear the explicit exit flag
