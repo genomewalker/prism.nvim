@@ -1624,6 +1624,167 @@ Modes:
             handler=self._handle_set_trust_mode,
         )
 
+        # =====================================================================
+        # Productivity Plugins (Harpoon, Trouble, Todos, Spectre)
+        # =====================================================================
+
+        self._register_tool(
+            name="harpoon_add",
+            description="""Add current file to harpoon list for quick access.
+
+Use this when the user says:
+- "mark this file" / "add to harpoon" / "pin this file"
+- "remember this file" / "bookmark with harpoon"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_harpoon_add,
+        )
+
+        self._register_tool(
+            name="harpoon_list",
+            description="""Show the harpoon quick access list.
+
+Use this when the user says:
+- "show harpoon" / "harpoon list" / "show marked files"
+- "what files are pinned?" / "show bookmarked files"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_harpoon_list,
+        )
+
+        self._register_tool(
+            name="harpoon_goto",
+            description="""Jump to a file in the harpoon list by index.
+
+Use this when the user says:
+- "go to harpoon 1" / "jump to file 2" / "harpoon file 3"
+- "open pinned file 1" / "switch to marked file 2"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "description": "1-indexed position in harpoon list",
+                    }
+                },
+                "required": ["index"],
+            },
+            handler=self._handle_harpoon_goto,
+        )
+
+        self._register_tool(
+            name="harpoon_remove",
+            description="""Remove current file from harpoon list.
+
+Use this when the user says:
+- "unmark this file" / "remove from harpoon" / "unpin this"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_harpoon_remove,
+        )
+
+        self._register_tool(
+            name="trouble_toggle",
+            description="""Toggle the Trouble diagnostics panel.
+
+Use this when the user says:
+- "show trouble" / "open trouble" / "diagnostics panel"
+- "show all errors" / "list all problems" / "trouble window"
+- "hide trouble" / "close trouble"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["diagnostics", "todo", "quickfix", "loclist", "lsp_references"],
+                        "description": "Trouble mode (default: diagnostics)",
+                        "default": "diagnostics",
+                    }
+                },
+            },
+            handler=self._handle_trouble_toggle,
+        )
+
+        self._register_tool(
+            name="search_todos",
+            description="""Search for TODO/FIXME/HACK comments in the project.
+
+Use this when the user says:
+- "find todos" / "search todos" / "show all TODOs"
+- "what needs to be done?" / "find FIXMEs" / "list HACKs"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "keywords": {
+                        "type": "string",
+                        "description": "Comma-separated keywords to search (default: TODO,FIXME,HACK)",
+                    }
+                },
+            },
+            handler=self._handle_search_todos,
+        )
+
+        self._register_tool(
+            name="next_todo",
+            description="""Jump to the next TODO comment.
+
+Use this when the user says:
+- "next todo" / "go to next TODO" / "find next FIXME"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_next_todo,
+        )
+
+        self._register_tool(
+            name="prev_todo",
+            description="""Jump to the previous TODO comment.
+
+Use this when the user says:
+- "previous todo" / "go to prev TODO" / "last FIXME"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_prev_todo,
+        )
+
+        self._register_tool(
+            name="spectre_open",
+            description="""Open Spectre for project-wide search and replace.
+
+Use this when the user says:
+- "search and replace in project" / "find and replace everywhere"
+- "project-wide replace" / "open spectre" / "bulk replace"
+""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "search": {
+                        "type": "string",
+                        "description": "Initial search pattern (optional)",
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "Initial replacement text (optional)",
+                    },
+                },
+            },
+            handler=self._handle_spectre_open,
+        )
+
+        self._register_tool(
+            name="spectre_word",
+            description="""Open Spectre with the word under cursor.
+
+Use this when the user says:
+- "replace this word everywhere" / "find and replace this"
+- "rename this across project" / "spectre this word"
+""",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_spectre_word,
+        )
+
     def _register_tool(self, name: str, description: str, input_schema: dict, handler: Callable):
         """Register an MCP tool."""
         self.tools[name] = Tool(
@@ -3068,6 +3229,192 @@ Modes:
             }
         else:
             return {"success": False, "error": result.get("error", "Unknown error")}
+
+    # =========================================================================
+    # Productivity Plugin Handlers (Harpoon, Trouble, Todos, Spectre)
+    # =========================================================================
+
+    def _handle_harpoon_add(self) -> dict:
+        """Add current file to harpoon list."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, harpoon = pcall(require, 'harpoon')
+            if not ok then
+                return { success = false, error = 'Harpoon not installed' }
+            end
+            local list = harpoon:list()
+            list:add()
+            return { success = true, message = 'File added to harpoon' }
+            """
+        )
+        self._narrate("Add to harpoon (leader+a or :lua require('harpoon'):list():add())")
+        return result or {"success": True}
+
+    def _handle_harpoon_list(self) -> dict:
+        """Show harpoon file list."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, harpoon = pcall(require, 'harpoon')
+            if not ok then
+                return { success = false, error = 'Harpoon not installed', files = {} }
+            end
+            local list = harpoon:list()
+            local files = {}
+            for i, item in ipairs(list.items) do
+                table.insert(files, { index = i, path = item.value })
+            end
+            return { success = true, files = files }
+            """
+        )
+        self._narrate("Show harpoon (Ctrl+e or :lua require('harpoon').ui:toggle_quick_menu())")
+        # Also toggle the UI
+        self.nvim.exec_lua(
+            """
+            local ok, harpoon = pcall(require, 'harpoon')
+            if ok then harpoon.ui:toggle_quick_menu(harpoon:list()) end
+            """
+        )
+        return result or {"success": True, "files": []}
+
+    def _handle_harpoon_goto(self, index: int) -> dict:
+        """Jump to harpoon file by index."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, harpoon = pcall(require, 'harpoon')
+            if not ok then
+                return { success = false, error = 'Harpoon not installed' }
+            end
+            local list = harpoon:list()
+            list:select(...)
+            return { success = true }
+            """,
+            index,
+        )
+        self._narrate(f"Jump to harpoon {index} (leader+{index})")
+        return result or {"success": True}
+
+    def _handle_harpoon_remove(self) -> dict:
+        """Remove current file from harpoon list."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, harpoon = pcall(require, 'harpoon')
+            if not ok then
+                return { success = false, error = 'Harpoon not installed' }
+            end
+            local list = harpoon:list()
+            list:remove()
+            return { success = true, message = 'File removed from harpoon' }
+            """
+        )
+        self._narrate("Remove from harpoon")
+        return result or {"success": True}
+
+    def _handle_trouble_toggle(self, mode: str = "diagnostics") -> dict:
+        """Toggle Trouble diagnostics panel."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, trouble = pcall(require, 'trouble')
+            if not ok then
+                return { success = false, error = 'Trouble not installed' }
+            end
+            trouble.toggle(...)
+            return { success = true }
+            """,
+            mode,
+        )
+        self._narrate(f"Toggle Trouble {mode} (<leader>xx or :Trouble {mode})")
+        return result or {"success": True}
+
+    def _handle_search_todos(self, keywords: str = "TODO,FIXME,HACK") -> dict:
+        """Search for TODO comments in project."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, trouble = pcall(require, 'trouble')
+            if not ok then
+                vim.cmd('TodoTelescope')
+                return { success = true, method = 'telescope' }
+            end
+            trouble.toggle('todo')
+            return { success = true, method = 'trouble' }
+            """
+        )
+        self._narrate("Search TODOs (<leader>st or :TodoTelescope)")
+        return result or {"success": True}
+
+    def _handle_next_todo(self) -> dict:
+        """Jump to next TODO comment."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, todo = pcall(require, 'todo-comments')
+            if not ok then
+                return { success = false, error = 'todo-comments not installed' }
+            end
+            todo.jump_next()
+            return { success = true }
+            """
+        )
+        self._narrate("Next TODO (]t)")
+        return result or {"success": True}
+
+    def _handle_prev_todo(self) -> dict:
+        """Jump to previous TODO comment."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, todo = pcall(require, 'todo-comments')
+            if not ok then
+                return { success = false, error = 'todo-comments not installed' }
+            end
+            todo.jump_prev()
+            return { success = true }
+            """
+        )
+        self._narrate("Previous TODO ([t)")
+        return result or {"success": True}
+
+    def _handle_spectre_open(
+        self, search: Optional[str] = None, replace: Optional[str] = None
+    ) -> dict:
+        """Open Spectre for project-wide search and replace."""
+        if search:
+            result = self.nvim.exec_lua(
+                """
+                local ok, spectre = pcall(require, 'spectre')
+                if not ok then
+                    return { success = false, error = 'Spectre not installed' }
+                end
+                spectre.open({ search_text = ... })
+                return { success = true }
+                """,
+                search,
+            )
+        else:
+            result = self.nvim.exec_lua(
+                """
+                local ok, spectre = pcall(require, 'spectre')
+                if not ok then
+                    return { success = false, error = 'Spectre not installed' }
+                end
+                spectre.open()
+                return { success = true }
+                """
+            )
+        self._narrate("Open Spectre (<leader>sr or :lua require('spectre').open())")
+        return result or {"success": True}
+
+    def _handle_spectre_word(self) -> dict:
+        """Open Spectre with word under cursor."""
+        result = self.nvim.exec_lua(
+            """
+            local ok, spectre = pcall(require, 'spectre')
+            if not ok then
+                return { success = false, error = 'Spectre not installed' }
+            end
+            spectre.open_visual({ select_word = true })
+            return { success = true }
+            """
+        )
+        self._narrate("Spectre word (<leader>sw)")
+        return result or {"success": True}
 
     def _narrate(self, message: str):
         """Show vim tip if narrated mode is enabled."""

@@ -196,6 +196,18 @@ The `run_command` tool automatically handles window focus. It switches to the ed
 - `git_status` -- Project git status
 - `git_diff(staged?)` -- Git diff output
 
+### Productivity (Harpoon, Trouble, Todos, Spectre)
+- `harpoon_add` -- Add current file to harpoon quick list
+- `harpoon_list` -- Show harpoon file list
+- `harpoon_goto(index)` -- Jump to file by index (1-indexed)
+- `harpoon_remove` -- Remove current file from harpoon
+- `trouble_toggle(mode?)` -- Toggle Trouble panel (diagnostics, todo, quickfix, loclist)
+- `search_todos(keywords?)` -- Search TODO/FIXME/HACK comments
+- `next_todo` -- Jump to next TODO comment
+- `prev_todo` -- Jump to previous TODO comment
+- `spectre_open(search?, replace?)` -- Open Spectre for project-wide search/replace
+- `spectre_word` -- Open Spectre with word under cursor
+
 ### Other
 - `run_command(command)` -- Execute any Neovim ex command
 - `notify(message, level?)` -- Show notification to user
@@ -323,6 +335,31 @@ Trust modes:
 | "bookmark this" / "mark this spot as X" | `bookmark("X")` |
 | "show bookmarks" / "list bookmarks" | `list_bookmarks` |
 | "delete bookmark X" | `delete_bookmark("X")` |
+
+### Harpoon (Quick File Switching)
+
+| User says | Tool called |
+|-----------|-------------|
+| "mark this file" / "add to harpoon" / "pin this" | `harpoon_add` |
+| "show harpoon" / "pinned files" | `harpoon_list` |
+| "go to harpoon 1" / "jump to file 2" | `harpoon_goto(1)` |
+| "unpin this" / "remove from harpoon" | `harpoon_remove` |
+
+### Trouble & Todos
+
+| User says | Tool called |
+|-----------|-------------|
+| "show trouble" / "diagnostics panel" / "all errors" | `trouble_toggle` |
+| "show todos" / "find todos" / "list TODOs" | `search_todos` |
+| "next todo" / "go to next TODO" | `next_todo` |
+| "previous todo" | `prev_todo` |
+
+### Spectre (Project Search/Replace)
+
+| User says | Tool called |
+|-----------|-------------|
+| "search and replace in project" / "bulk replace" | `spectre_open` |
+| "replace this word everywhere" | `spectre_word` |
 
 ### Windows
 
