@@ -1608,14 +1608,32 @@ Modes:
     # Tool Handlers
     # =========================================================================
 
-    def _handle_open_file(self, path: str, keep_focus: Optional[bool] = None) -> dict:
+    def _handle_open_file(self, path: str, line: Optional[int] = None, column: Optional[int] = None, keep_focus: Optional[bool] = None) -> dict:
         """Open a file in the editor area (not the terminal)."""
         if keep_focus is None:
             keep_focus = self.config.get("keep_focus", True)
         elif isinstance(keep_focus, str):
             keep_focus = keep_focus.lower() == "true"
 
-        buf = self.nvim.open_file(path, keep_focus=keep_focus)
+        buf = self.nvim.open_file(path, keep_focus=False)  # Don't return focus yet
+
+        # Jump to line/column if specified
+        if line is not None:
+            line = int(line)
+            col = int(column) - 1 if column else 0
+            editor_win = self.nvim._find_editor_window()
+            if editor_win:
+                self.nvim.call("nvim_win_set_cursor", editor_win, [line, col])
+                # Center the line
+                current_win = self.nvim.call("nvim_get_current_win")
+                self.nvim.call("nvim_set_current_win", editor_win)
+                self.nvim.command("normal! zz")
+                self.nvim.call("nvim_set_current_win", current_win)
+
+        # Return focus to terminal if requested
+        if keep_focus:
+            self.nvim._return_to_terminal()
+
         self._narrate(f"Opening file (:e {path})")
         return {"success": True, "buffer_id": buf.id, "path": buf.name, "filetype": buf.filetype}
 
@@ -2601,13 +2619,25 @@ Modes:
     # =========================================================================
 
     def _handle_goto_line(self, line: int) -> dict:
-        """Jump to a specific line."""
+        """Jump to a specific line in the editor window."""
         line = int(line)
+
+        # Switch to editor window first (avoid terminal mode issues)
+        editor_win = self.nvim._find_editor_window()
+        if not editor_win:
+            return {"success": False, "error": "No editor window found"}
+
+        current_win = self.nvim.call("nvim_get_current_win")
+        self.nvim.call("nvim_set_current_win", editor_win)
+
         self.nvim.set_cursor(line, 0)
-        self.nvim.command("normal! ^")
+        self.nvim.command("normal! ^zz")
+
+        # Return to terminal
+        self.nvim.call("nvim_set_current_win", current_win)
+
         self._narrate(f"Go to line {line} (:{line} or {line}G)")
-        cursor = self.nvim.get_cursor()
-        return {"success": True, "line": cursor[0], "column": cursor[1], "vim_cmd": f":{line}"}
+        return {"success": True, "line": line, "column": 0, "vim_cmd": f":{line}"}
 
     def _handle_goto_matching(self) -> dict:
         """Jump to matching bracket."""

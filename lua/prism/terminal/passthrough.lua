@@ -81,20 +81,26 @@ function M.setup(bufnr)
 		pcall(vim.keymap.del, "t", map.lhs, { buffer = bufnr })
 	end
 
-	-- The ONLY way out: Ctrl+\ Ctrl+\
-	vim.keymap.set("t", "<C-\\><C-\\>", [[<C-\><C-n>]], {
+	-- The ONLY way out: Ctrl+\ Ctrl+\ (sets explicit exit flag)
+	vim.keymap.set("t", "<C-\\><C-\\>", function()
+		vim.b[bufnr].prism_explicit_exit = true
+		vim.cmd("stopinsert")
+	end, {
 		buffer = bufnr,
 		noremap = true,
 		silent = true,
-		desc = "Exit to normal mode",
+		desc = "Exit to normal mode (stay in normal mode)",
 	})
 
-	-- Optional: Ctrl+\ Ctrl+n also works (vim default, but explicit)
-	vim.keymap.set("t", "<C-\\><C-n>", [[<C-\><C-n>]], {
+	-- Optional: Ctrl+\ Ctrl+n also works (also sets flag)
+	vim.keymap.set("t", "<C-\\><C-n>", function()
+		vim.b[bufnr].prism_explicit_exit = true
+		vim.cmd("stopinsert")
+	end, {
 		buffer = bufnr,
 		noremap = true,
 		silent = true,
-		desc = "Exit to normal mode",
+		desc = "Exit to normal mode (stay in normal mode)",
 	})
 
 	-- Pass through EVERYTHING else
@@ -171,26 +177,39 @@ function M.setup(bufnr)
 		end,
 	})
 
-	-- Click to enter insert mode (left click)
+	-- Track explicit exit state - if user presses Ctrl+\ Ctrl+\, respect their choice
+	vim.b[bufnr].prism_explicit_exit = false
+
+	-- Mouse click positions cursor but does NOT auto-enter insert mode
 	vim.keymap.set("n", "<LeftMouse>", function()
-		-- Position cursor with the mouse click, then enter insert mode
 		local mouse = vim.fn.getmousepos()
 		if mouse and mouse.line > 0 then
 			pcall(vim.api.nvim_win_set_cursor, 0, { mouse.line, mouse.column - 1 })
 		end
+		-- Stay in normal mode for copying/selecting
+	end, {
+		buffer = bufnr,
+		noremap = true,
+		silent = true,
+		desc = "Position cursor (stay in normal mode)",
+	})
+
+	-- Override 'i' to clear the explicit exit flag
+	vim.keymap.set("n", "i", function()
+		vim.b[bufnr].prism_explicit_exit = false
 		vim.cmd("startinsert")
 	end, {
 		buffer = bufnr,
 		noremap = true,
 		silent = true,
-		desc = "Click to enter terminal insert mode",
+		desc = "Enter terminal insert mode",
 	})
 
-	-- Also enter insert mode when focusing the terminal buffer
+	-- Auto-enter insert mode when focusing buffer (but not after explicit exit)
 	vim.api.nvim_create_autocmd("BufEnter", {
 		buffer = bufnr,
 		callback = function()
-			if vim.bo[bufnr].buftype == "terminal" then
+			if vim.bo[bufnr].buftype == "terminal" and not vim.b[bufnr].prism_explicit_exit then
 				vim.cmd("startinsert")
 			end
 		end,

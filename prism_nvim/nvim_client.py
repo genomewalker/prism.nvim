@@ -291,6 +291,39 @@ class NeovimClient:
         self.call("nvim_buf_set_text", buf_id, line, col, line, col, text.split("\n"))
 
     # =========================================================================
+    # Window Helpers
+    # =========================================================================
+
+    def _find_editor_window(self) -> Optional[int]:
+        """Find a non-terminal window suitable for editing."""
+        windows = self.call("nvim_list_wins")
+        for win in windows:
+            buf = self.call("nvim_win_get_buf", win)
+            buftype = self.call("nvim_get_option_value", "buftype", {"buf": buf})
+            bufname = self.call("nvim_buf_get_name", buf)
+            if buftype != "terminal" and not bufname.startswith("prism://"):
+                return win
+        return None
+
+    def _find_terminal_window(self) -> Optional[int]:
+        """Find the terminal window."""
+        windows = self.call("nvim_list_wins")
+        for win in windows:
+            buf = self.call("nvim_win_get_buf", win)
+            buftype = self.call("nvim_get_option_value", "buftype", {"buf": buf})
+            if buftype == "terminal":
+                return win
+        return None
+
+    def _return_to_terminal(self) -> bool:
+        """Return focus to terminal window."""
+        term_win = self._find_terminal_window()
+        if term_win:
+            self.call("nvim_set_current_win", term_win)
+            return True
+        return False
+
+    # =========================================================================
     # File Operations
     # =========================================================================
 

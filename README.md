@@ -11,90 +11,43 @@
 
 ---
 
-## Why Prism?
+## Vibe Coding
+
+Don't know vim? No problem. Just talk:
 
 ```
-┌─────────────────────────────────────────┐
-│            Without Prism                │
-├─────────────────────────────────────────┤
-│ Claude: Read("file.ts")                 │
-│ → Returns 500 lines (~1,500 tokens)     │
-│                                         │
-│ Claude: Edit("file.ts", old, new)       │
-│ → Sends old block + new block           │
-│ → (~800 tokens)                         │
-│                                         │
-│ Total: ~2,300 tokens per edit           │
-└─────────────────────────────────────────┘
-
-┌─────────────────────────────────────────┐
-│              With Prism                 │
-├─────────────────────────────────────────┤
-│ Claude: run_command("%s/old/new/g")     │
-│ → 15 tokens                             │
-│                                         │
-│ Total: ~15-30 tokens per edit           │
-│                                         │
-│ Savings: 50-100x                        │
-└─────────────────────────────────────────┘
+"go to line 42"           → cursor jumps
+"comment this"             → toggles comment
+"replace foo with bar"     → done
+"fix this error"           → applies LSP fix
+"commit with message X"    → git commit
 ```
+
+Watch every edit happen live in your editor. Full undo support.
 
 ## Install
 
-**Option 1: Claude Code Plugin** (Recommended)
+Two commands. That's it:
 
 ```bash
-# Add marketplace (one-time)
 /plugin add-marketplace genomewalker/prism.nvim
-
-# Install plugin
 /plugin install prism-nvim@genomewalker-prism-nvim
 ```
 
-**Option 2: Claude Code Skill**
+Or use the skill: `/prism install`
 
-```
-/prism install
-```
-
-**Option 3: Curl**
-```bash
-curl -fsSL https://raw.githubusercontent.com/genomewalker/prism.nvim/main/install.sh | bash
-```
-
-Then restart Claude Code and Neovim.
+Then restart Claude Code and open Neovim.
 
 ## Quick Start
 
-1. **Open Neovim**
-2. **Press `Ctrl+;`** to toggle Claude terminal
-3. **Talk naturally**: "Replace all foo with bar in this file"
-4. **Watch Claude edit** your file in real-time
+1. Press **`Ctrl+;`** to toggle Claude terminal
+2. Talk naturally: "replace foo with bar"
+3. Watch it happen live
 
-## Vibe Coding
+## Learn Vim as You Go
 
-Don't know vim? No problem. Just describe what you want:
+Say "teach me vim" to enable narrated mode. Every action shows the vim command:
 
-| You say | Claude does |
-|---------|-------------|
-| "go to line 42" | Jumps to line 42 |
-| "comment this line" | Toggles comment |
-| "duplicate this" | Duplicates the line |
-| "move this up" | Moves line up |
-| "delete lines 10-20" | Deletes the range |
-| "show me errors" | Shows diagnostics |
-| "fix this error" | Applies quick fix |
-| "replace foo with bar" | Find and replace |
-
-### Learn Vim as You Go
-
-Enable narrated mode to see vim commands as Claude executes them:
-
-```
-"teach me vim"
-```
-
-Now every action shows the equivalent vim command:
 ```
 📚 Toggle comment (gcc)
 📚 Indent line (>>)
@@ -124,120 +77,57 @@ Switch modes anytime by just telling Claude, or use `:PrismMode`.
 | "who wrote this?" | Shows git blame |
 | "show recent commits" | Shows git log |
 
-## Visible Editing
-
-Watch every edit happen live:
-- Files open in your editor
-- Cursor jumps to the line
-- Changes appear in real-time
-- Full undo support (`u` to undo)
-
 ## Keybindings
 
 | Key | Action |
 |-----|--------|
 | `Ctrl+;` | Toggle Claude terminal |
-| `Ctrl+\ Ctrl+\` | Exit terminal mode |
+| `Ctrl+\ Ctrl+\` | Exit terminal mode (passthrough) |
 | `<leader>cs` | Send selection to Claude |
-| `<leader>cb` | Send buffer to Claude |
-| `<leader>cd` | Send diagnostics to Claude |
 
-## Commands
-
-| Command | Action |
-|---------|--------|
-| `:Claude` | Toggle terminal |
-| `:Claude --continue` | Continue last session |
-| `:ClaudeSend [text]` | Send text or context |
-| `:PrismMode` | Pick trust mode |
-
-## Shell Commands
-
-After install, you get `nvc` - nvim with Claude flags:
+## Shell Aliases
 
 ```bash
-nvc                    # Just nvim + Claude
-nvc -c                 # Continue last conversation
-nvc --model opus       # Use Opus model
-nvco                   # Shortcut for opus
+nvc              # nvim + Claude
+nvc -c           # continue last conversation
+nvc --model opus # use Opus model
+nvco             # shortcut for opus
 ```
 
-## MCP Tools (55+)
+## 55+ MCP Tools
 
-### Editing
-`comment` · `duplicate_line` · `move_line` · `delete_line` · `join_lines` · `indent` · `dedent` · `fold` · `unfold` · `undo` · `redo`
+**Editing:** comment, duplicate, move, delete, indent, fold, undo/redo
 
-### Navigation
-`goto_line` · `next_error` · `prev_error` · `jump_back` · `jump_forward` · `bookmark` · `goto_bookmark`
+**Navigation:** goto_line, next_error, jump_back, bookmarks
 
-### Selection
-`select_word` · `select_line` · `select_block` · `select_all` · `get_selection`
+**LSP:** diagnostics, fix_diagnostic, goto_definition, rename_symbol, format
 
-### LSP
-`get_diagnostics` · `fix_diagnostic` · `goto_definition` · `get_references` · `rename_symbol` · `code_actions` · `format_file`
+**Git:** status, diff, stage, commit, blame, log
 
-### Git
-`git_status` · `git_diff` · `git_stage` · `git_commit` · `git_blame` · `git_log`
-
-### Vim Learning
-`explain_command` · `suggest_command` · `vim_cheatsheet`
+**Learning:** explain_command, suggest_command, vim_cheatsheet
 
 ## Configuration
 
 ```lua
 require("prism").setup({
-  terminal = {
-    width = 0.4,           -- 40% of screen
-    passthrough = true,    -- Real terminal feel
-  },
-  trust = {
-    mode = "companion",    -- guardian | companion | autopilot
-  },
+  terminal = { width = 0.4, passthrough = true },
+  trust = { mode = "companion" },  -- guardian | companion | autopilot
 })
-```
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────┐
-│                   Neovim                     │
-│  ┌─────────────┐      ┌───────────────────┐  │
-│  │   Editor    │      │  Claude Terminal  │  │
-│  │   Window    │◄────►│   (Ctrl+;)        │  │
-│  └─────────────┘      └───────────────────┘  │
-│         │                                    │
-│         ▼                                    │
-│  ┌───────────────────────────────────────┐   │
-│  │      Prism MCP Server (Python)        │   │
-│  └───────────────────────────────────────┘   │
-│                     │                        │
-└─────────────────────│────────────────────────┘
-                      │ lockfile discovery
-                      ▼
-            ┌──────────────────┐
-            │   Claude Code    │
-            └──────────────────┘
 ```
 
 ## Requirements
 
-- Neovim >= 0.9.0
+- Neovim 0.9+
 - Claude Code CLI
 - Python 3.10+ with msgpack
 
 ## Troubleshooting
 
-**MCP not connecting?**
-1. Check `~/.claude/settings.json` has prism-nvim entry
-2. Restart Claude Code
-3. Run `/prism status` to check
-
-**Terminal disappears?**
-- Press `Ctrl+;` to bring it back
-
-**Passthrough mode issues?**
-- `Ctrl+\ Ctrl+\` exits to normal mode
-- All other keys go to Claude
+| Issue | Fix |
+|-------|-----|
+| MCP not connecting | Restart Claude Code, run `/prism status` |
+| Terminal disappears | Press `Ctrl+;` |
+| Stuck in terminal | `Ctrl+\ Ctrl+\` exits to normal mode |
 
 ## License
 
