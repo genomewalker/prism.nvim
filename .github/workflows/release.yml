@@ -125,12 +125,14 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          # Fetch and checkout gh-pages
-          git fetch origin gh-pages
+          # Fetch all branches
+          git fetch origin
+
+          # Checkout gh-pages
           git checkout gh-pages
 
-          # Update with latest docs
-          git checkout main -- docs/index.html
+          # Update with latest docs from origin/main
+          git checkout origin/main -- docs/index.html
           cp docs/index.html index.html
           rm -rf docs
 
