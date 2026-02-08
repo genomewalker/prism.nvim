@@ -1689,19 +1689,22 @@ Use this when the user says:
         try:
             # Resolve absolute path
             if not os.path.isabs(path):
-                cwd = self.nvim.call("getcwd")
+                cwd = self.nvim.func("getcwd")
                 path = os.path.join(cwd, path)
 
-            # Open the file
-            self.nvim.command(f"edit {path}")
+            # Use nvim_client's open_file which finds editor window first
+            self.nvim.open_file(path, keep_focus=keep_focus)
 
             # Jump to line/column if specified
             if line:
-                self.nvim.call("cursor", line, column or 1)
-
-            # Return focus to terminal if configured
-            if keep_focus and self.config.get("keep_focus", True):
-                self.nvim.command("wincmd p")
+                # Need to switch to editor window for cursor positioning
+                editor_win = self.nvim._find_editor_window()
+                if editor_win:
+                    current_win = self.nvim.call("nvim_get_current_win")
+                    self.nvim.call("nvim_set_current_win", editor_win)
+                    self.nvim.func("cursor", line, column or 1)
+                    if keep_focus:
+                        self.nvim.call("nvim_set_current_win", current_win)
 
             self._narrate(f"Open file (:e {path})")
             return {"success": True, "path": path}
@@ -1726,7 +1729,7 @@ Use this when the user says:
             cmd = "bdelete!" if force else "bdelete"
             if path:
                 # Find buffer by path
-                bufs = self.nvim.call("getbufinfo", {"buflisted": 1})
+                bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
                 for buf in bufs:
                     if _path_matches(buf.get("name", ""), path):
                         self.nvim.command(f"{cmd} {buf['bufnr']}")
@@ -1831,7 +1834,7 @@ Use this when the user says:
     def _handle_get_open_files(self) -> dict:
         """Get list of open files."""
         try:
-            bufs = self.nvim.call("getbufinfo", {"buflisted": 1})
+            bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
             files = []
             for buf in bufs:
                 files.append({
@@ -1846,7 +1849,7 @@ Use this when the user says:
     def _handle_get_current_file(self) -> dict:
         """Get current file info."""
         try:
-            path = self.nvim.call("expand", "%:p")
+            path = self.nvim.func("expand", "%:p")
             line, col = self.nvim.call("getpos", ".")[1:3]
             modified = self.nvim.call("getbufvar", "%", "&modified") == 1
             return {
@@ -1868,7 +1871,7 @@ Use this when the user says:
     def _handle_set_cursor_position(self, line: int, column: int) -> dict:
         """Set cursor position."""
         try:
-            self.nvim.call("cursor", line, column)
+            self.nvim.func("cursor", line, column)
             self._narrate(f"Move cursor ({line}G{column}|)")
             return {"success": True}
         except Exception as e:
@@ -1926,7 +1929,7 @@ Use this when the user says:
     def _handle_get_windows(self) -> dict:
         """Get window information."""
         try:
-            wins = self.nvim.call("getwininfo")
+            wins = self.nvim.func("getwininfo")
             windows = []
             for win in wins:
                 buf = self.nvim.call("nvim_win_get_buf", win["winid"])
@@ -1967,7 +1970,7 @@ Use this when the user says:
             # Wait a bit and get new position
             import time
             time.sleep(0.1)
-            path = self.nvim.call("expand", "%:p")
+            path = self.nvim.func("expand", "%:p")
             pos = self.nvim.call("getpos", ".")
             return {"success": True, "path": path, "line": pos[1]}
         except Exception as e:
@@ -2033,7 +2036,7 @@ Use this when the user says:
         """Get git status."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
+            cwd = self.nvim.func("getcwd")
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
                 cwd=cwd,
@@ -2054,7 +2057,7 @@ Use this when the user says:
         """Get git diff."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
+            cwd = self.nvim.func("getcwd")
             cmd = ["git", "diff"]
             if staged:
                 cmd.append("--staged")
@@ -2067,13 +2070,13 @@ Use this when the user says:
         """Stage files for commit."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
+            cwd = self.nvim.func("getcwd")
             if all:
                 cmd = ["git", "add", "-A"]
             elif path:
                 cmd = ["git", "add", path]
             else:
-                current = self.nvim.call("expand", "%:p")
+                current = self.nvim.func("expand", "%:p")
                 cmd = ["git", "add", current]
             subprocess.run(cmd, cwd=cwd, check=True)
             return {"success": True, "message": "Staged"}
@@ -2084,7 +2087,7 @@ Use this when the user says:
         """Commit staged changes."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
+            cwd = self.nvim.func("getcwd")
             subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True)
             return {"success": True, "message": message}
         except Exception as e:
@@ -2094,8 +2097,8 @@ Use this when the user says:
         """Git blame for a line."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
-            path = self.nvim.call("expand", "%:p")
+            cwd = self.nvim.func("getcwd")
+            path = self.nvim.func("expand", "%:p")
             if line is None:
                 line = self.nvim.call("line", ".")
             result = subprocess.run(
@@ -2112,7 +2115,7 @@ Use this when the user says:
         """Show git log."""
         try:
             import subprocess
-            cwd = self.nvim.call("getcwd")
+            cwd = self.nvim.func("getcwd")
             cmd = ["git", "log", f"-{count}", "--oneline"]
             if path:
                 cmd.extend(["--", path])
@@ -2125,7 +2128,7 @@ Use this when the user says:
     def _handle_goto_line(self, line: int) -> dict:
         """Go to a specific line."""
         try:
-            self.nvim.call("cursor", line, 1)
+            self.nvim.func("cursor", line, 1)
             self._narrate(f"Go to line ({line}G)")
             return {"success": True, "line": line}
         except Exception as e:
@@ -2171,7 +2174,7 @@ Use this when the user says:
         try:
             self.nvim.command(f"normal! {count}\x0f")  # Ctrl-O
             self._narrate(f"Jump back ({count}<C-o>)")
-            path = self.nvim.call("expand", "%:p")
+            path = self.nvim.func("expand", "%:p")
             pos = self.nvim.call("getpos", ".")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-o>"}
         except Exception as e:
@@ -2182,7 +2185,7 @@ Use this when the user says:
         try:
             self.nvim.command(f"normal! {count}\x09")  # Ctrl-I
             self._narrate(f"Jump forward ({count}<C-i>)")
-            path = self.nvim.call("expand", "%:p")
+            path = self.nvim.func("expand", "%:p")
             pos = self.nvim.call("getpos", ".")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-i>"}
         except Exception as e:
@@ -2265,7 +2268,7 @@ Use this when the user says:
                 self._narrate("Fold all (zM)")
                 return {"success": True, "message": "All folded", "vim_cmd": "zM"}
             if line:
-                self.nvim.call("cursor", line, 1)
+                self.nvim.func("cursor", line, 1)
             self.nvim.command("normal! zc")
             self._narrate("Fold (zc)")
             return {"success": True, "vim_cmd": "zc"}
@@ -2280,7 +2283,7 @@ Use this when the user says:
                 self._narrate("Unfold all (zR)")
                 return {"success": True, "message": "All unfolded", "vim_cmd": "zR"}
             if line:
-                self.nvim.call("cursor", line, 1)
+                self.nvim.func("cursor", line, 1)
             self.nvim.command("normal! zo")
             self._narrate("Unfold (zo)")
             return {"success": True, "vim_cmd": "zo"}
@@ -2290,7 +2293,7 @@ Use this when the user says:
     def _handle_bookmark(self, name: str, description: str = None) -> dict:
         """Create a bookmark."""
         try:
-            path = self.nvim.call("expand", "%:p")
+            path = self.nvim.func("expand", "%:p")
             pos = self.nvim.call("getpos", ".")
             self.bookmarks[name] = {
                 "path": path,
@@ -2309,7 +2312,7 @@ Use this when the user says:
                 return {"success": False, "error": f"Bookmark not found: {name}"}
             bm = self.bookmarks[name]
             self.nvim.command(f"edit {bm['path']}")
-            self.nvim.call("cursor", bm["line"], bm["column"])
+            self.nvim.func("cursor", bm["line"], bm["column"])
             return {"success": True, "name": name, "path": bm["path"], "line": bm["line"]}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2343,7 +2346,7 @@ Use this when the user says:
         """Duplicate a line."""
         try:
             if line:
-                self.nvim.call("cursor", line, 1)
+                self.nvim.func("cursor", line, 1)
             for _ in range(count):
                 self.nvim.command("normal! yyp")
             self._narrate(f"Duplicate line (yyp x{count})")
@@ -2392,7 +2395,7 @@ Use this when the user says:
         """Select word under cursor."""
         try:
             self.nvim.command("normal! viw")
-            word = self.nvim.call("expand", "<cword>")
+            word = self.nvim.func("expand", "<cword>")
             return {"success": True, "word": word}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2401,7 +2404,7 @@ Use this when the user says:
         """Select line(s)."""
         try:
             if start_line and end_line:
-                self.nvim.call("cursor", start_line, 1)
+                self.nvim.func("cursor", start_line, 1)
                 self.nvim.command(f"normal! V{end_line - start_line}j")
                 lines = end_line - start_line + 1
             else:
@@ -2697,7 +2700,7 @@ Use this when the user says:
         if path is None:
             return self.nvim.call("nvim_get_current_buf")
 
-        bufs = self.nvim.call("getbufinfo", {"buflisted": 1})
+        bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
         for buf in bufs:
             if _path_matches(buf.get("name", ""), path):
                 return buf["bufnr"]

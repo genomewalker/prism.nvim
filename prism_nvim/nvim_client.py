@@ -241,6 +241,10 @@ class NeovimClient:
         """Execute Lua code in Neovim."""
         return self.call("nvim_exec_lua", code, list(args))
 
+    def func(self, name: str, *args) -> Any:
+        """Call a vimscript function by name."""
+        return self.call("nvim_call_function", name, list(args))
+
     # =========================================================================
     # Buffer Operations
     # =========================================================================
