@@ -1720,7 +1720,7 @@ Use this when the user says:
                 "properties": {
                     "keywords": {
                         "type": "string",
-                        "description": "Comma-separated keywords to search (default: TODO,FIXME,HACK)",
+                        "description": "Keywords to search (default: TODO,FIXME,HACK)",
                     }
                 },
             },
