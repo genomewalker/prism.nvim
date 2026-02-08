@@ -31,6 +31,8 @@ Or: `/prism install`
 
 Then **restart Claude Code** and open Neovim.
 
+**Want a ready-to-go config?** Try [nvim-config](https://github.com/genomewalker/nvim-config) - LazyVim + prism.nvim + productivity plugins.
+
 ---
 
 ## Quick Start
