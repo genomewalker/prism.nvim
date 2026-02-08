@@ -1608,7 +1608,13 @@ Modes:
     # Tool Handlers
     # =========================================================================
 
-    def _handle_open_file(self, path: str, line: Optional[int] = None, column: Optional[int] = None, keep_focus: Optional[bool] = None) -> dict:
+    def _handle_open_file(
+        self,
+        path: str,
+        line: Optional[int] = None,
+        column: Optional[int] = None,
+        keep_focus: Optional[bool] = None,
+    ) -> dict:
         """Open a file in the editor area (not the terminal)."""
         if keep_focus is None:
             keep_focus = self.config.get("keep_focus", True)
@@ -1964,11 +1970,13 @@ Modes:
                 path = buf.name
             cmd = f"git add {path}"
 
-        result = self.nvim.lua(f"""
+        result = self.nvim.lua(
+            f"""
             local output = vim.fn.system('{cmd}')
             local code = vim.v.shell_error
             return {{ output = output, code = code }}
-        """)
+        """
+        )
 
         if result.get("code", 0) != 0:
             return {"success": False, "error": result.get("output", "Failed to stage")}
@@ -1981,11 +1989,13 @@ Modes:
         escaped_message = message.replace("'", "'\\''")
         cmd = f"git commit -m '{escaped_message}'"
 
-        result = self.nvim.lua(f"""
+        result = self.nvim.lua(
+            f"""
             local output = vim.fn.system([[{cmd}]])
             local code = vim.v.shell_error
             return {{ output = output, code = code }}
-        """)
+        """
+        )
 
         if result.get("code", 0) != 0:
             error_msg = result.get("output", "Failed to commit")
@@ -2002,11 +2012,13 @@ Modes:
             cursor = self.nvim.get_cursor()
             line = cursor[0]
 
-        result = self.nvim.lua(f"""
+        result = self.nvim.lua(
+            f"""
             local output = vim.fn.system('git blame -L {line},{line} {path} 2>/dev/null')
             local code = vim.v.shell_error
             return {{ output = output, code = code }}
-        """)
+        """
+        )
 
         if result.get("code", 0) != 0:
             return {"success": False, "error": "Not in a git repository or file not tracked"}
@@ -2016,11 +2028,13 @@ Modes:
 
     def _handle_git_log(self, count: int = 10) -> dict:
         """Show commit history."""
-        result = self.nvim.lua(f"""
+        result = self.nvim.lua(
+            f"""
             local output = vim.fn.system('git log --oneline -n {count} 2>/dev/null')
             local code = vim.v.shell_error
             return {{ output = output, code = code }}
-        """)
+        """
+        )
 
         if result.get("code", 0) != 0:
             return {"success": False, "error": "Not in a git repository"}
@@ -2031,7 +2045,8 @@ Modes:
 
     def _handle_list_symbols(self) -> dict:
         """List all symbols in the current file using LSP."""
-        result = self.nvim.lua("""
+        result = self.nvim.lua(
+            """
             local symbols = {}
             local params = { textDocument = vim.lsp.util.make_text_document_params() }
 
@@ -2076,7 +2091,8 @@ Modes:
             end
 
             return { success = true, symbols = symbols }
-        """)
+        """
+        )
 
         if not result.get("success"):
             return {"success": False, "error": result.get("error", "Failed to get symbols")}
@@ -2106,7 +2122,7 @@ Modes:
             "symbol": target.get("name"),
             "kind": target.get("kind"),
             "line": line,
-            "matches": len(matches)
+            "matches": len(matches),
         }
 
     def _handle_open_terminal(self, command: Optional[str] = None) -> dict:
@@ -2355,7 +2371,8 @@ Modes:
                     "success": True,
                     "action": "code_action_shown",
                     "diagnostic": diagnostic,
-                    "message": "Code action menu shown for: " + diagnostic.get("message", "unknown"),
+                    "message": "Code action menu shown for: "
+                    + diagnostic.get("message", "unknown"),
                 }
             else:
                 # Just return the diagnostic for Claude to fix manually
@@ -2995,7 +3012,10 @@ Modes:
         """Set the trust mode for edit handling."""
         valid_modes = {"guardian", "companion", "autopilot"}
         if mode not in valid_modes:
-            return {"success": False, "error": f"Invalid mode: {mode}. Use: {', '.join(valid_modes)}"}
+            return {
+                "success": False,
+                "error": f"Invalid mode: {mode}. Use: {', '.join(valid_modes)}",
+            }
 
         # Call the Lua function to set the mode
         result = self.nvim.exec_lua(
@@ -3324,7 +3344,9 @@ Modes:
                     return "(no symbols found)"
                 lines = [f"{len(symbols)} symbols:"]
                 for s in symbols[:15]:
-                    lines.append(f"  L{s.get('line', 0):4} {s.get('kind', ''):12} {s.get('name', '')}")
+                    lines.append(
+                        f"  L{s.get('line', 0):4} {s.get('kind', ''):12} {s.get('name', '')}"
+                    )
                 if len(symbols) > 15:
                     lines.append(f"  ... and {len(symbols) - 15} more")
                 return "\n".join(lines)
