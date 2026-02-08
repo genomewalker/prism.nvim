@@ -366,11 +366,35 @@ class NeovimClient:
         return buf
 
     def save_file(self, filepath: Optional[str] = None) -> None:
-        """Save the current buffer."""
+        """Save a buffer. If filepath provided, finds and saves that buffer."""
         if filepath:
-            self.command(f"saveas {filepath}")
+            # Find buffer by path and save it directly
+            for buf in self.get_buffers():
+                if buf.name.endswith(filepath) or buf.name == filepath:
+                    # Switch to editor window, save buffer, switch back
+                    current_win = self.call("nvim_get_current_win")
+                    editor_win = self._find_editor_window()
+                    if editor_win:
+                        self.call("nvim_set_current_win", editor_win)
+                        self.call("nvim_set_current_buf", buf.id)
+                        self.command("write")
+                        self.call("nvim_set_current_win", current_win)
+                    else:
+                        # No editor window, just try to write the buffer
+                        self.command(f"silent! buffer {buf.id} | write | buffer #")
+                    return
+            # Buffer not found - file might not be open, nothing to save
+            return
         else:
-            self.command("write")
+            # Save current buffer in editor window
+            editor_win = self._find_editor_window()
+            if editor_win:
+                current_win = self.call("nvim_get_current_win")
+                self.call("nvim_set_current_win", editor_win)
+                self.command("write")
+                self.call("nvim_set_current_win", current_win)
+            else:
+                self.command("write")
 
     def close_buffer(self, buf_id: Optional[int] = None, force: bool = False) -> None:
         """Close a buffer."""

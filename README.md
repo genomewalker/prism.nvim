@@ -2,139 +2,149 @@
 
 **Claude controls your editor directly. Talk to it. Watch it edit.**
 
-55+ MCP tools with 10-50x token savings. No vim knowledge required.
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9+-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![Docs](https://img.shields.io/badge/Docs-Website-blue)](https://genomewalker.github.io/prism.nvim/)
+[![Version](https://img.shields.io/github/v/release/genomewalker/prism.nvim?label=version)](https://github.com/genomewalker/prism.nvim/releases)
 
 ---
 
-## Vibe Coding
+## Why Prism?
 
-Don't know vim? No problem. Just talk:
+**See every edit happen.** Claude opens files, jumps to lines, and makes changes right in front of you. Full undo support - just press `u`.
 
-```
-"go to line 42"           → cursor jumps
-"comment this"             → toggles comment
-"replace foo with bar"     → done
-"fix this error"           → applies LSP fix
-"commit with message X"    → git commit
-```
+**Save 10-50x tokens.** Vim commands are tiny (`%s/old/new/g` = 15 tokens) vs Claude's Edit tool (~2000 tokens). Your context window lasts longer.
 
-Watch every edit happen live in your editor. Full undo support.
+**No vim required.** Just talk: "go to line 42", "fix this error", "commit with message X". Prism translates.
+
+---
 
 ## Install
-
-Two commands. That's it:
 
 ```bash
 /plugin add-marketplace genomewalker/prism.nvim
 /plugin install prism-nvim@genomewalker-prism-nvim
 ```
 
-Or use the skill: `/prism install`
+Or: `/prism install`
 
-Then restart Claude Code and open Neovim.
+Then **restart Claude Code** and open Neovim.
+
+---
 
 ## Quick Start
 
-1. Press **`Ctrl+;`** to toggle Claude terminal
-2. Talk naturally: "replace foo with bar"
-3. Watch it happen live
+```
+Ctrl+;              → Toggle Claude terminal
+"replace foo bar"   → Find and replace
+"fix this error"    → Apply LSP quick fix
+"commit changes"    → Git commit
+Ctrl+\ Ctrl+\       → Exit to normal mode
+```
 
-## Learn Vim as You Go
+---
 
-Say "teach me vim" to enable narrated mode. Every action shows the vim command:
+## Vibe Coding
+
+Don't know vim? Just describe what you want:
+
+| You say | What happens |
+|---------|--------------|
+| "go to line 42" | Cursor jumps |
+| "comment this" | Toggles comment |
+| "duplicate line" | Line duplicated |
+| "move this up" | Line moves up |
+| "show errors" | Diagnostics panel |
+| "rename to newName" | LSP rename |
+
+### Learn Vim Along the Way
+
+Say **"teach me vim"** to enable narrated mode:
 
 ```
 📚 Toggle comment (gcc)
-📚 Indent line (>>)
-📚 Jump to line 50 (:50)
+📚 Indent line (>>)  
+📚 Jump to line (:50)
 ```
+
+---
 
 ## Trust Modes
 
-Control how Claude handles edits:
+| Mode | What it does | Say this |
+|------|--------------|----------|
+| **Guardian** | Review every edit before applying | "be more careful" |
+| **Companion** | Auto-apply with visual feedback | "I trust you" |
+| **Autopilot** | Full speed, minimal UI | "just do it" |
 
-| Mode | Description | Trigger |
-|------|-------------|---------|
-| **Guardian** | Review every edit | "be more careful" |
-| **Companion** | Auto-accept with overlay | "I trust you" |
-| **Autopilot** | Full auto, minimal UI | "just do it" |
+---
 
-Switch modes anytime by just telling Claude, or use `:PrismMode`.
+## Git Integration
 
-## Git Operations
+```
+"what changed?"      → git status
+"show diff"          → git diff  
+"stage this"         → git add
+"commit: fix bug"    → git commit -m "fix bug"
+"who wrote this?"    → git blame
+```
 
-| You say | Claude does |
-|---------|-------------|
-| "what's changed?" | Shows git status |
-| "show the diff" | Shows git diff |
-| "stage this file" | Stages current file |
-| "commit with message X" | Creates commit |
-| "who wrote this?" | Shows git blame |
-| "show recent commits" | Shows git log |
-
-## Keybindings
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+;` | Toggle Claude terminal |
-| `Ctrl+\ Ctrl+\` | Exit terminal mode (passthrough) |
-| `<leader>cs` | Send selection to Claude |
+---
 
 ## Shell Aliases
 
+After install, use `nvc` to launch:
+
 ```bash
-nvc              # nvim + Claude
-nvc -c           # continue last conversation
-nvc --model opus # use Opus model
-nvco             # shortcut for opus
+nvc                  # nvim + Claude
+nvc -c               # continue last session
+nvc --model opus     # use Opus
+nvco                 # shortcut for opus
 ```
+
+---
 
 ## 55+ MCP Tools
 
-**Editing:** comment, duplicate, move, delete, indent, fold, undo/redo
+| Category | Tools |
+|----------|-------|
+| **Editing** | comment, duplicate, move, delete, indent, fold, undo/redo |
+| **Navigation** | goto_line, next_error, jump_back, bookmarks |
+| **LSP** | diagnostics, fix_diagnostic, goto_definition, rename_symbol |
+| **Git** | status, diff, stage, commit, blame, log |
+| **Learning** | explain_command, suggest_command, vim_cheatsheet |
 
-**Navigation:** goto_line, next_error, jump_back, bookmarks
-
-**LSP:** diagnostics, fix_diagnostic, goto_definition, rename_symbol, format
-
-**Git:** status, diff, stage, commit, blame, log
-
-**Learning:** explain_command, suggest_command, vim_cheatsheet
+---
 
 ## Configuration
 
 ```lua
 require("prism").setup({
   terminal = { width = 0.4, passthrough = true },
-  trust = { mode = "companion" },  -- guardian | companion | autopilot
+  trust = { mode = "companion" },
 })
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| MCP not connecting | Restart Claude Code, run `/prism status` |
+| Terminal gone | `Ctrl+;` brings it back |
+| Stuck in terminal | `Ctrl+\ Ctrl+\` exits to normal mode |
+
+---
 
 ## Requirements
 
 - Neovim 0.9+
-- Claude Code CLI
+- Claude Code CLI  
 - Python 3.10+ with msgpack
-
-## Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| MCP not connecting | Restart Claude Code, run `/prism status` |
-| Terminal disappears | Press `Ctrl+;` |
-| Stuck in terminal | `Ctrl+\ Ctrl+\` exits to normal mode |
-
-## License
-
-MIT
 
 ---
 
-*Built for developers who want Claude to actually control their editor.*
+MIT · [Website](https://genomewalker.github.io/prism.nvim/) · [GitHub](https://github.com/genomewalker/prism.nvim) · [Issues](https://github.com/genomewalker/prism.nvim/issues)
 
-[Website](https://genomewalker.github.io/prism.nvim/) · [GitHub](https://github.com/genomewalker/prism.nvim) · [Issues](https://github.com/genomewalker/prism.nvim/issues)
