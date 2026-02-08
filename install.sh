@@ -44,9 +44,9 @@ command -v nvim >/dev/null 2>&1 || error "Neovim not found. Install from https:/
 command -v claude >/dev/null 2>&1 || warn "Claude CLI not found. Install from https://docs.anthropic.com/en/docs/claude-code"
 command -v python3 >/dev/null 2>&1 || error "Python 3 not found"
 
-# Install Python dependencies
-info "Installing Python dependencies..."
-python3 -m pip install --quiet --user msgpack 2>/dev/null || pip install --quiet msgpack
+# Install Python package (includes all dependencies)
+info "Installing prism-nvim Python package..."
+python3 -m pip install --quiet --user "$PRISM_DIR" 2>/dev/null || pip install --quiet "$PRISM_DIR"
 
 # ============================================================================
 # Step 1: Neovim Plugin
@@ -96,8 +96,7 @@ if 'mcpServers' not in settings:
 settings['mcpServers']['prism-nvim'] = {
     "type": "stdio",
     "command": "python3",
-    "args": ["-m", "prism_nvim.mcp_server"],
-    "cwd": prism_dir
+    "args": ["-m", "prism_nvim.mcp_server"]
 }
 
 with open(settings_file, 'w') as f:
@@ -112,8 +111,7 @@ else
     "prism-nvim": {
       "type": "stdio",
       "command": "python3",
-      "args": ["-m", "prism_nvim.mcp_server"],
-      "cwd": "$PRISM_DIR"
+      "args": ["-m", "prism_nvim.mcp_server"]
     }
   }
 }
