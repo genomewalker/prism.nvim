@@ -11,14 +11,13 @@ import asyncio
 import json
 import logging
 import os
-import sys
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import Callable, Optional
 
-from mcp.server import Server, InitializationOptions
+from mcp.server import InitializationOptions, Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool as MCPTool, ServerCapabilities, ToolsCapability
+from mcp.types import ServerCapabilities, TextContent, ToolsCapability
+from mcp.types import Tool as MCPTool
 
 from .nvim_client import NeovimClient
 
@@ -981,8 +980,15 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {"type": "integer", "description": "Line to fold (cursor if not specified)"},
-                    "all": {"type": "boolean", "description": "Fold all foldable regions", "default": False},
+                    "line": {
+                        "type": "integer",
+                        "description": "Line to fold (cursor if not specified)",
+                    },
+                    "all": {
+                        "type": "boolean",
+                        "description": "Fold all foldable regions",
+                        "default": False,
+                    },
                 },
             },
             handler=self._handle_fold,
@@ -999,8 +1005,15 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {"type": "integer", "description": "Line to unfold (cursor if not specified)"},
-                    "all": {"type": "boolean", "description": "Unfold all regions", "default": False},
+                    "line": {
+                        "type": "integer",
+                        "description": "Line to unfold (cursor if not specified)",
+                    },
+                    "all": {
+                        "type": "boolean",
+                        "description": "Unfold all regions",
+                        "default": False,
+                    },
                 },
             },
             handler=self._handle_unfold,
@@ -1064,7 +1077,9 @@ Use this when the user says:
 """,
             input_schema={
                 "type": "object",
-                "properties": {"name": {"type": "string", "description": "Bookmark name to delete"}},
+                "properties": {
+                    "name": {"type": "string", "description": "Bookmark name to delete"}
+                },
                 "required": ["name"],
             },
             handler=self._handle_delete_bookmark,
@@ -1085,8 +1100,14 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
-                    "end_line": {"type": "integer", "description": "End line (same as start if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)",
+                    },
                 },
             },
             handler=self._handle_comment,
@@ -1102,7 +1123,10 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "line": {"type": "integer", "description": "Line to duplicate (current if not specified)"},
+                    "line": {
+                        "type": "integer",
+                        "description": "Line to duplicate (current if not specified)",
+                    },
                     "count": {"type": "integer", "description": "Number of copies", "default": 1},
                 },
             },
@@ -1124,7 +1148,10 @@ Use this when the user says:
                         "enum": ["up", "down"],
                         "description": "Direction to move",
                     },
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
                     "end_line": {"type": "integer", "description": "End line for range move"},
                 },
                 "required": ["direction"],
@@ -1143,8 +1170,14 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
-                    "end_line": {"type": "integer", "description": "End line (same as start if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)",
+                    },
                 },
             },
             handler=self._handle_delete_line,
@@ -1160,7 +1193,11 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "count": {"type": "integer", "description": "Number of lines to join", "default": 2}
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of lines to join",
+                        "default": 2,
+                    }
                 },
             },
             handler=self._handle_join_lines,
@@ -1192,8 +1229,14 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
-                    "end_line": {"type": "integer", "description": "End line (same as start if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)",
+                    },
                 },
             },
             handler=self._handle_select_line,
@@ -1251,8 +1294,14 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
-                    "end_line": {"type": "integer", "description": "End line (same as start if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)",
+                    },
                     "count": {"type": "integer", "description": "Indent levels", "default": 1},
                 },
             },
@@ -1270,8 +1319,14 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "start_line": {"type": "integer", "description": "Start line (current if not specified)"},
-                    "end_line": {"type": "integer", "description": "End line (same as start if not specified)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line (current if not specified)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line (same as start if not specified)",
+                    },
                     "count": {"type": "integer", "description": "Dedent levels", "default": 1},
                 },
             },
@@ -1317,7 +1372,9 @@ Use this when the user says:
 """,
             input_schema={
                 "type": "object",
-                "properties": {"command": {"type": "string", "description": "The ex command to execute"}},
+                "properties": {
+                    "command": {"type": "string", "description": "The ex command to execute"}
+                },
                 "required": ["command"],
             },
             handler=self._handle_run_command,
@@ -1427,7 +1484,9 @@ Use this when the user says:
 """,
             input_schema={
                 "type": "object",
-                "properties": {"command": {"type": "string", "description": "Vim command to explain"}},
+                "properties": {
+                    "command": {"type": "string", "description": "Vim command to explain"}
+                },
                 "required": ["command"],
             },
             handler=self._handle_explain_command,
@@ -1677,6 +1736,7 @@ Use this when the user says:
         except Exception as e:
             logger.error(f"Tool error: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return f"Error: {e}"
 
@@ -1684,7 +1744,9 @@ Use this when the user says:
     # Tool Handlers
     # =========================================================================
 
-    def _handle_open_file(self, path: str, line: int = None, column: int = None, keep_focus: bool = True) -> dict:
+    def _handle_open_file(
+        self, path: str, line: int = None, column: int = None, keep_focus: bool = True
+    ) -> dict:
         """Open a file in the editor."""
         try:
             # Resolve absolute path
@@ -1770,7 +1832,9 @@ Use this when the user says:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _handle_get_buffer_lines(self, path: str = None, start_line: int = 1, end_line: int = -1) -> dict:
+    def _handle_get_buffer_lines(
+        self, path: str = None, start_line: int = 1, end_line: int = -1
+    ) -> dict:
         """Get specific lines from buffer."""
         try:
             buf = self._get_buffer(path)
@@ -1782,7 +1846,9 @@ Use this when the user says:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _handle_set_buffer_content(self, content: str, path: str = None, auto_save: bool = False) -> dict:
+    def _handle_set_buffer_content(
+        self, content: str, path: str = None, auto_save: bool = False
+    ) -> dict:
         """Set buffer content."""
         try:
             buf = self._get_buffer(path)
@@ -1798,7 +1864,12 @@ Use this when the user says:
             return {"success": False, "error": str(e)}
 
     def _handle_edit_buffer(
-        self, start_line: int, end_line: int, new_lines: list, path: str = None, auto_save: bool = False
+        self,
+        start_line: int,
+        end_line: int,
+        new_lines: list,
+        path: str = None,
+        auto_save: bool = False,
     ) -> dict:
         """Edit specific lines in buffer."""
         try:
@@ -1837,11 +1908,13 @@ Use this when the user says:
             bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
             files = []
             for buf in bufs:
-                files.append({
-                    "path": buf.get("name", ""),
-                    "modified": buf.get("changed", 0) == 1,
-                    "bufnr": buf.get("bufnr"),
-                })
+                files.append(
+                    {
+                        "path": buf.get("name", ""),
+                        "modified": buf.get("changed", 0) == 1,
+                        "bufnr": buf.get("bufnr"),
+                    }
+                )
             return {"files": files}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -1934,12 +2007,14 @@ Use this when the user says:
             for win in wins:
                 buf = self.nvim.call("nvim_win_get_buf", win["winid"])
                 path = self.nvim.call("nvim_buf_get_name", buf)
-                windows.append({
-                    "id": win["winid"],
-                    "path": path,
-                    "width": win.get("width", 0),
-                    "height": win.get("height", 0),
-                })
+                windows.append(
+                    {
+                        "id": win["winid"],
+                        "path": path,
+                        "width": win.get("width", 0),
+                        "height": win.get("height", 0),
+                    }
+                )
             return {"windows": windows}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -1952,12 +2027,14 @@ Use this when the user says:
             result = []
             for d in diags:
                 severity_map = {1: "error", 2: "warning", 3: "info", 4: "hint"}
-                result.append({
-                    "line": d.get("lnum", 0) + 1,
-                    "column": d.get("col", 0),
-                    "message": d.get("message", ""),
-                    "severity": severity_map.get(d.get("severity", 4), "info"),
-                })
+                result.append(
+                    {
+                        "line": d.get("lnum", 0) + 1,
+                        "column": d.get("col", 0),
+                        "message": d.get("message", ""),
+                        "severity": severity_map.get(d.get("severity", 4), "info"),
+                    }
+                )
             return {"diagnostics": result}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -1969,6 +2046,7 @@ Use this when the user says:
             self._narrate("Go to definition (gd)")
             # Wait a bit and get new position
             import time
+
             time.sleep(0.1)
             path = self.nvim.func("expand", "%:p")
             pos = self.nvim.call("getpos", ".")
@@ -2003,6 +2081,7 @@ Use this when the user says:
 
             matches = []
             import re
+
             for i, line in enumerate(lines):
                 for m in re.finditer(pattern, line):
                     matches.append({"line": i + 1, "column": m.start(), "text": m.group()})
@@ -2036,6 +2115,7 @@ Use this when the user says:
         """Get git status."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
@@ -2057,6 +2137,7 @@ Use this when the user says:
         """Get git diff."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             cmd = ["git", "diff"]
             if staged:
@@ -2070,6 +2151,7 @@ Use this when the user says:
         """Stage files for commit."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             if all:
                 cmd = ["git", "add", "-A"]
@@ -2087,6 +2169,7 @@ Use this when the user says:
         """Commit staged changes."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True)
             return {"success": True, "message": message}
@@ -2097,6 +2180,7 @@ Use this when the user says:
         """Git blame for a line."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             path = self.nvim.func("expand", "%:p")
             if line is None:
@@ -2115,6 +2199,7 @@ Use this when the user says:
         """Show git log."""
         try:
             import subprocess
+
             cwd = self.nvim.func("getcwd")
             cmd = ["git", "log", f"-{count}", "--oneline"]
             if path:
@@ -2354,7 +2439,9 @@ Use this when the user says:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _handle_move_line(self, direction: str, start_line: int = None, end_line: int = None) -> dict:
+    def _handle_move_line(
+        self, direction: str, start_line: int = None, end_line: int = None
+    ) -> dict:
         """Move line(s) up or down."""
         try:
             if direction == "up":
@@ -2377,7 +2464,7 @@ Use this when the user says:
             else:
                 self.nvim.command("delete")
                 deleted = 1
-            self._narrate(f"Delete line (dd)")
+            self._narrate("Delete line (dd)")
             return {"success": True, "deleted": deleted, "vim_cmd": "dd"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2447,7 +2534,7 @@ Use this when the user says:
                 for _ in range(count):
                     self.nvim.command("normal! >>")
                 lines = 1
-            self._narrate(f"Indent (>>)")
+            self._narrate("Indent (>>)")
             return {"success": True, "lines": lines}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2463,7 +2550,7 @@ Use this when the user says:
                 for _ in range(count):
                     self.nvim.command("normal! <<")
                 lines = 1
-            self._narrate(f"Dedent (<<)")
+            self._narrate("Dedent (<<)")
             return {"success": True, "lines": lines}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2519,7 +2606,9 @@ Use this when the user says:
         """Get current config."""
         return {"config": self.config}
 
-    def _handle_set_config(self, auto_save: bool = None, keep_focus: bool = None, narrated: bool = None) -> dict:
+    def _handle_set_config(
+        self, auto_save: bool = None, keep_focus: bool = None, narrated: bool = None
+    ) -> dict:
         """Update config."""
         if auto_save is not None:
             self.config["auto_save"] = auto_save
@@ -2546,7 +2635,9 @@ Use this when the user says:
             "zo": "Open fold",
             "gcc": "Toggle comment on line",
         }
-        explanation = explanations.get(command, f"Command '{command}' - use :help {command} for details")
+        explanation = explanations.get(
+            command, f"Command '{command}' - use :help {command} for details"
+        )
         return {"command": command, "explanation": explanation}
 
     def _handle_suggest_command(self, task: str) -> dict:
@@ -2619,7 +2710,9 @@ Use this when the user says:
     def _handle_harpoon_list(self) -> dict:
         """Show harpoon list."""
         try:
-            self.nvim.command("lua require('harpoon').ui:toggle_quick_menu(require('harpoon'):list())")
+            self.nvim.command(
+                "lua require('harpoon').ui:toggle_quick_menu(require('harpoon'):list())"
+            )
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2872,7 +2965,7 @@ def main():
         init_options = InitializationOptions(
             server_name="prism-nvim",
             server_version="0.1.0",
-            capabilities=ServerCapabilities(tools=ToolsCapability())
+            capabilities=ServerCapabilities(tools=ToolsCapability()),
         )
         async with stdio_server() as (read_stream, write_stream):
             await mcp_server.run(read_stream, write_stream, init_options)
