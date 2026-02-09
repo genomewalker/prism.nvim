@@ -180,21 +180,33 @@ function M.setup(bufnr)
 	-- Track explicit exit state - if user presses Ctrl+\ Ctrl+\, respect their choice
 	vim.b[bufnr].prism_explicit_exit = false
 
-	-- Mouse click: enter insert mode unless user explicitly exited
+	-- Mouse click: enter insert mode only if click is IN this buffer's window
 	vim.keymap.set("n", "<LeftMouse>", function()
 		local mouse = vim.fn.getmousepos()
-		if mouse and mouse.line > 0 and mouse.winid > 0 then
-			pcall(vim.api.nvim_win_set_cursor, mouse.winid, { mouse.line, mouse.column - 1 })
-		end
-		-- Enter insert mode unless user explicitly exited with Ctrl+\ Ctrl+\
-		if not vim.b[bufnr].prism_explicit_exit then
-			vim.cmd("startinsert")
+		if mouse and mouse.winid > 0 then
+			local clicked_buf = vim.api.nvim_win_get_buf(mouse.winid)
+			-- If click is in a DIFFERENT buffer, let normal behavior happen
+			if clicked_buf ~= bufnr then
+				-- Switch to the clicked window
+				vim.api.nvim_set_current_win(mouse.winid)
+				if mouse.line > 0 then
+					pcall(vim.api.nvim_win_set_cursor, mouse.winid, { mouse.line, math.max(0, mouse.column - 1) })
+				end
+				return
+			end
+			-- Click is in THIS terminal buffer
+			if mouse.line > 0 then
+				pcall(vim.api.nvim_win_set_cursor, mouse.winid, { mouse.line, mouse.column - 1 })
+			end
+			if not vim.b[bufnr].prism_explicit_exit then
+				vim.cmd("startinsert")
+			end
 		end
 	end, {
 		buffer = bufnr,
 		noremap = true,
 		silent = true,
-		desc = "Position cursor and enter insert mode",
+		desc = "Position cursor and enter insert mode (only in this buffer)",
 	})
 
 	-- Override insert mode keys to clear the explicit exit flag
