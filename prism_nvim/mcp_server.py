@@ -1951,8 +1951,8 @@ Use this when the user says:
         """Get current file info."""
         try:
             path = self.nvim.func("expand", "%:p")
-            line, col = self.nvim.call("getpos", ".")[1:3]
-            modified = self.nvim.call("getbufvar", "%", "&modified") == 1
+            line, col = self.nvim.func("getpos", ".")[1:3]
+            modified = self.nvim.func("getbufvar", "%", "&modified") == 1
             return {
                 "path": path,
                 "cursor": {"line": line, "column": col},
@@ -1964,7 +1964,7 @@ Use this when the user says:
     def _handle_get_cursor_position(self) -> dict:
         """Get cursor position."""
         try:
-            pos = self.nvim.call("getpos", ".")
+            pos = self.nvim.func("getpos", ".")
             return {"line": pos[1], "column": pos[2]}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -1982,14 +1982,14 @@ Use this when the user says:
         """Get selected text."""
         try:
             # Get visual selection marks
-            start = self.nvim.call("getpos", "'<")
-            end = self.nvim.call("getpos", "'>")
+            start = self.nvim.func("getpos", "'<")
+            end = self.nvim.func("getpos", "'>")
 
             if start[1] == 0 and end[1] == 0:
                 return {"text": None}
 
             # Get lines in selection
-            lines = self.nvim.call("getline", start[1], end[1])
+            lines = self.nvim.func("getline", start[1], end[1])
             if isinstance(lines, str):
                 lines = [lines]
 
@@ -2077,7 +2077,7 @@ Use this when the user says:
 
             time.sleep(0.1)
             path = self.nvim.func("expand", "%:p")
-            pos = self.nvim.call("getpos", ".")
+            pos = self.nvim.func("getpos", ".")
             return {"success": True, "path": path, "line": pos[1]}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2212,7 +2212,7 @@ Use this when the user says:
             cwd = self.nvim.func("getcwd")
             path = self.nvim.func("expand", "%:p")
             if line is None:
-                line = self.nvim.call("line", ".")
+                line = self.nvim.func("line", ".")
             result = subprocess.run(
                 ["git", "blame", "-L", f"{line},{line}", path],
                 cwd=cwd,
@@ -2252,9 +2252,9 @@ Use this when the user says:
         try:
 
             def do_match():
-                start_pos = self.nvim.call("getpos", ".")
+                start_pos = self.nvim.func("getpos", ".")
                 self.nvim.command("normal! %")
-                end_pos = self.nvim.call("getpos", ".")
+                end_pos = self.nvim.func("getpos", ".")
                 return start_pos, end_pos
 
             start_pos, end_pos = self._in_editor_window(do_match, path)
@@ -2273,7 +2273,7 @@ Use this when the user says:
 
             def do_next():
                 self.nvim.command("lua vim.diagnostic.goto_next()")
-                return self.nvim.call("getpos", ".")
+                return self.nvim.func("getpos", ".")
 
             pos = self._in_editor_window(do_next, path)
             self._narrate("Next diagnostic (]d)")
@@ -2287,7 +2287,7 @@ Use this when the user says:
 
             def do_prev():
                 self.nvim.command("lua vim.diagnostic.goto_prev()")
-                return self.nvim.call("getpos", ".")
+                return self.nvim.func("getpos", ".")
 
             pos = self._in_editor_window(do_prev, path)
             self._narrate("Previous diagnostic ([d)")
@@ -2302,7 +2302,7 @@ Use this when the user says:
             def do_jump():
                 self.nvim.command(f"normal! {count}\x0f")  # Ctrl-O
                 path = self.nvim.func("expand", "%:p")
-                pos = self.nvim.call("getpos", ".")
+                pos = self.nvim.func("getpos", ".")
                 return path, pos
 
             path, pos = self._in_editor_window(do_jump)
@@ -2318,7 +2318,7 @@ Use this when the user says:
             def do_jump():
                 self.nvim.command(f"normal! {count}\x09")  # Ctrl-I
                 path = self.nvim.func("expand", "%:p")
-                pos = self.nvim.call("getpos", ".")
+                pos = self.nvim.func("getpos", ".")
                 return path, pos
 
             path, pos = self._in_editor_window(do_jump)
@@ -2399,7 +2399,7 @@ Use this when the user says:
             # Search for the symbol
             self.nvim.command(f"/{name}")
             self.nvim.command("normal! n")
-            pos = self.nvim.call("getpos", ".")
+            pos = self.nvim.func("getpos", ".")
             return {"success": True, "symbol": name, "kind": kind or "symbol", "line": pos[1]}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2438,7 +2438,7 @@ Use this when the user says:
         """Create a bookmark."""
         try:
             path = self.nvim.func("expand", "%:p")
-            pos = self.nvim.call("getpos", ".")
+            pos = self.nvim.func("getpos", ".")
             self.bookmarks[name] = {
                 "path": path,
                 "line": pos[1],
@@ -2576,7 +2576,7 @@ Use this when the user says:
         """Select all content."""
         try:
             self.nvim.command("normal! ggVG")
-            line_count = self.nvim.call("line", "$")
+            line_count = self.nvim.func("line", "$")
             self._narrate("Select all (ggVG)")
             return {"success": True, "lines": line_count}
         except Exception as e:
