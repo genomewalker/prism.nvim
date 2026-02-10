@@ -6,12 +6,33 @@
 #   CLAUDE_ARGS="--continue" nvim
 #   CLAUDE_ARGS="--model opus --continue" nvim file.py
 
-# Convenience aliases
-alias nvc='CLAUDE_ARGS="--continue" nvim'
-alias nvco='CLAUDE_ARGS="--model opus" nvim'
-alias nvcs='CLAUDE_ARGS="--model sonnet" nvim'
-alias nvch='CLAUDE_ARGS="--model haiku" nvim'
-alias nvcr='CLAUDE_ARGS="--continue --resume" nvim'
+# nvc [claude-flags...] [files...] - Open nvim with Claude flags
+# Flags (--*) go to Claude, everything else to nvim
+nvc() {
+  local claude_args=""
+  local files=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --*)
+        if [[ "$2" && ! "$2" =~ ^-- ]]; then
+          claude_args+="$1 $2 "
+          shift 2
+        else
+          claude_args+="$1 "
+          shift
+        fi
+        ;;
+      *)
+        files+=("$1")
+        shift
+        ;;
+    esac
+  done
+  CLAUDE_ARGS="${claude_args% }" nvim "${files[@]}"
+}
+alias nvco='nvc --model opus'
+alias nvcs='nvc --model sonnet'
+alias nvch='nvc --model haiku'
 
 # Open with specific model
 # Usage: nvim-model opus [files...]
