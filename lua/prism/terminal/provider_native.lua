@@ -129,15 +129,20 @@ function M.open(cmd, env, opts)
   state.job_id = job_id
   state.channel = job_id
 
-  -- Set buffer options
+  -- Set buffer options (protect from being used as edit target)
   vim.api.nvim_set_option_value("buftype", "terminal", { buf = state.bufnr })
   vim.api.nvim_set_option_value("buflisted", false, { buf = state.bufnr })
+  vim.api.nvim_set_option_value("swapfile", false, { buf = state.bufnr })
+  vim.api.nvim_set_option_value("bufhidden", "hide", { buf = state.bufnr })
   vim.api.nvim_buf_set_name(state.bufnr, "prism://claude")
+  vim.bo[state.bufnr].filetype = "prism"
 
-  -- Set window options
+  -- Set window options (protect layout)
   vim.api.nvim_set_option_value("number", false, { win = state.winid })
   vim.api.nvim_set_option_value("relativenumber", false, { win = state.winid })
   vim.api.nvim_set_option_value("signcolumn", "no", { win = state.winid })
+  vim.api.nvim_set_option_value("winfixwidth", true, { win = state.winid })
+  vim.api.nvim_set_option_value("winfixheight", true, { win = state.winid })
 
   -- Setup terminal keymaps for better navigation
   -- Stay in normal mode by default, press 'i' to type
@@ -163,8 +168,16 @@ function M.open(cmd, env, opts)
   vim.keymap.set("t", "<C-\\>", [[<C-\><C-n>:PrismToggle<CR>]], kopts)
 
   -- Stay in normal mode (don't auto-enter insert)
-  -- User presses 'i' to type, Esc to navigate
   vim.cmd("stopinsert")
+
+  -- Force resize after Claude Code TUI initializes (sends SIGWINCH)
+  vim.defer_fn(function()
+    if state.winid and vim.api.nvim_win_is_valid(state.winid) then
+      local w = vim.api.nvim_win_get_width(state.winid)
+      vim.api.nvim_win_set_width(state.winid, w + 1)
+      vim.api.nvim_win_set_width(state.winid, w)
+    end
+  end, 200)
 
   if opts.on_open then
     vim.schedule(function()
@@ -226,13 +239,25 @@ function M.toggle()
     state.winid = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(state.winid, state.bufnr)
 
-    -- Set window options
+    -- Set window options (protect layout)
     vim.api.nvim_set_option_value("number", false, { win = state.winid })
     vim.api.nvim_set_option_value("relativenumber", false, { win = state.winid })
     vim.api.nvim_set_option_value("signcolumn", "no", { win = state.winid })
+    vim.api.nvim_set_option_value("winfixwidth", true, { win = state.winid })
+    vim.api.nvim_set_option_value("winfixheight", true, { win = state.winid })
 
     -- Stay in normal mode for navigation
     vim.cmd("stopinsert")
+
+    -- Force resize after layout settles (sends SIGWINCH)
+    vim.defer_fn(function()
+      if state.winid and vim.api.nvim_win_is_valid(state.winid) then
+        local w = vim.api.nvim_win_get_width(state.winid)
+        vim.api.nvim_win_set_width(state.winid, w + 1)
+        vim.api.nvim_win_set_width(state.winid, w)
+      end
+    end, 200)
+
     return true
   end
 end
