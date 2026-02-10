@@ -77,6 +77,8 @@ local function setup_commands()
       M.history()
     elseif subcmd == "stop" then
       M.stop()
+    elseif subcmd == "resize" then
+      M.resize()
     elseif subcmd == "accept" then
       M.accept_hunk()
     elseif subcmd == "reject" then
@@ -112,6 +114,7 @@ local function setup_commands()
           "diff",
           "history",
           "stop",
+          "resize",
           "accept",
           "reject",
           "accept_all",
@@ -151,6 +154,10 @@ local function setup_commands()
   vim.api.nvim_create_user_command("PrismToggle", function()
     M.toggle()
   end, { desc = "Toggle Prism terminal" })
+
+  vim.api.nvim_create_user_command("PrismResize", function()
+    M.resize()
+  end, { desc = "Force terminal resize (fixes layout issues)" })
 
   vim.api.nvim_create_user_command("PrismModel", function(opts)
     M.model(opts.args ~= "" and opts.args or nil)
@@ -402,6 +409,16 @@ function M.close()
   if ok then
     terminal.close()
     state.terminal_open = false
+  end
+end
+
+--- Force terminal resize (fixes layout issues like cc-status compression)
+function M.resize()
+  local ok, terminal = pcall(require, "prism.terminal")
+  if ok then
+    if terminal.resize() then
+      vim.notify("[prism.nvim] Terminal resized", vim.log.levels.INFO)
+    end
   end
 end
 

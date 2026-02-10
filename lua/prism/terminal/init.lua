@@ -485,4 +485,18 @@ function M.focus()
   return false
 end
 
+--- Force terminal resize (sends SIGWINCH to fix layout issues)
+--- @return boolean success
+function M.resize()
+  if not active_provider then
+    return false
+  end
+
+  if active_provider.resize then
+    return active_provider.resize()
+  end
+
+  return false
+end
+
 return M

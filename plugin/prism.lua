@@ -84,6 +84,7 @@ local lazy_commands = {
   { name = "PrismDiff", args = 0, cmd = "diff" },
   { name = "PrismStop", args = 0, cmd = "stop" },
   { name = "PrismToggle", args = 0, cmd = "toggle" },
+  { name = "PrismResize", args = 0, cmd = "resize" },
   { name = "PrismModel", args = "?", cmd = "model" },
   { name = "PrismAccept", args = 0, cmd = "accept" },
   { name = "PrismReject", args = 0, cmd = "reject" },

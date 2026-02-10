@@ -11,12 +11,86 @@ local state = {
   winid = nil,
   job_id = nil,
   channel = nil,
+  resize_timer = nil,
+  autocmd_group = nil,
 }
 
 --- Check if native terminal is available (always true)
 --- @return boolean
 function M.is_available()
   return true
+end
+
+--- Force resize to send SIGWINCH to terminal
+--- @return boolean success
+local function trigger_resize()
+  if state.winid and vim.api.nvim_win_is_valid(state.winid) then
+    local w = vim.api.nvim_win_get_width(state.winid)
+    vim.api.nvim_win_set_width(state.winid, w + 1)
+    vim.api.nvim_win_set_width(state.winid, w)
+    return true
+  end
+  return false
+end
+
+--- Setup autocmds for the terminal buffer
+local function setup_autocmds()
+  if state.autocmd_group then
+    pcall(vim.api.nvim_del_augroup_by_id, state.autocmd_group)
+  end
+
+  state.autocmd_group = vim.api.nvim_create_augroup("PrismTerminal", { clear = true })
+
+  -- Resize on VimResized (external window size changes)
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = state.autocmd_group,
+    callback = function()
+      vim.defer_fn(trigger_resize, 50)
+    end,
+  })
+
+  -- Resize when entering terminal (catches cc-status that appeared while away)
+  vim.api.nvim_create_autocmd("TermEnter", {
+    group = state.autocmd_group,
+    buffer = state.bufnr,
+    callback = function()
+      trigger_resize()
+    end,
+  })
+
+  -- Also trigger on BufEnter for the terminal buffer
+  vim.api.nvim_create_autocmd("BufEnter", {
+    group = state.autocmd_group,
+    buffer = state.bufnr,
+    callback = function()
+      trigger_resize()
+    end,
+  })
+end
+
+--- Start continuous resize monitoring for initial stabilization
+--- Runs resize every 500ms for 10 seconds to catch cc-status appearance
+local function start_resize_monitor()
+  -- Cancel existing timer
+  if state.resize_timer then
+    pcall(vim.fn.timer_stop, state.resize_timer)
+    state.resize_timer = nil
+  end
+
+  local count = 0
+  local max_count = 20  -- 20 * 500ms = 10 seconds
+
+  state.resize_timer = vim.fn.timer_start(500, function()
+    count = count + 1
+    trigger_resize()
+
+    if count >= max_count then
+      if state.resize_timer then
+        vim.fn.timer_stop(state.resize_timer)
+        state.resize_timer = nil
+      end
+    end
+  end, { ["repeat"] = max_count })
 end
 
 --- Create terminal window based on position
@@ -170,19 +244,11 @@ function M.open(cmd, env, opts)
   -- Stay in normal mode (don't auto-enter insert)
   vim.cmd("stopinsert")
 
-  -- Force resize at multiple intervals to catch Claude TUI initialization
-  local function trigger_resize()
-    if state.winid and vim.api.nvim_win_is_valid(state.winid) then
-      local w = vim.api.nvim_win_get_width(state.winid)
-      vim.api.nvim_win_set_width(state.winid, w + 1)
-      vim.api.nvim_win_set_width(state.winid, w)
-    end
-  end
-  vim.defer_fn(trigger_resize, 100)
-  vim.defer_fn(trigger_resize, 500)
-  vim.defer_fn(trigger_resize, 1000)
-  vim.defer_fn(trigger_resize, 2000)  -- After cc-status appears
-  vim.defer_fn(trigger_resize, 3000)
+  -- Setup autocmds for resize on events
+  setup_autocmds()
+
+  -- Start continuous resize monitoring to catch cc-status appearance
+  start_resize_monitor()
 
   if opts.on_open then
     vim.schedule(function()
@@ -196,6 +262,18 @@ end
 --- Close terminal
 --- @return boolean success
 function M.close()
+  -- Stop resize timer
+  if state.resize_timer then
+    pcall(vim.fn.timer_stop, state.resize_timer)
+    state.resize_timer = nil
+  end
+
+  -- Remove autocmds
+  if state.autocmd_group then
+    pcall(vim.api.nvim_del_augroup_by_id, state.autocmd_group)
+    state.autocmd_group = nil
+  end
+
   -- Stop job if running
   if state.job_id then
     pcall(vim.fn.jobstop, state.job_id)
@@ -254,19 +332,9 @@ function M.toggle()
     -- Stay in normal mode for navigation
     vim.cmd("stopinsert")
 
-    -- Force resize at multiple intervals (sends SIGWINCH)
-    local function trigger_resize()
-      if state.winid and vim.api.nvim_win_is_valid(state.winid) then
-        local w = vim.api.nvim_win_get_width(state.winid)
-        vim.api.nvim_win_set_width(state.winid, w + 1)
-        vim.api.nvim_win_set_width(state.winid, w)
-      end
-    end
-    vim.defer_fn(trigger_resize, 100)
-    vim.defer_fn(trigger_resize, 500)
-    vim.defer_fn(trigger_resize, 1000)
-    vim.defer_fn(trigger_resize, 2000)  -- After cc-status appears
-    vim.defer_fn(trigger_resize, 3000)
+    -- Re-setup autocmds and start resize monitoring
+    setup_autocmds()
+    start_resize_monitor()
 
     return true
   end
@@ -313,6 +381,12 @@ function M.is_running()
   end
   local status = vim.fn.jobwait({ state.job_id }, 0)[1]
   return status == -1 -- -1 means still running
+end
+
+--- Force terminal resize (exposed for manual triggering)
+--- @return boolean success
+function M.resize()
+  return trigger_resize()
 end
 
 return M
