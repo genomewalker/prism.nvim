@@ -2427,13 +2427,18 @@ Use this when the user says:
     def _handle_fold(self, line: int = None, all: bool = False) -> dict:
         """Fold code."""
         try:
+            def do_fold():
+                if all:
+                    self.nvim.command("normal! zM")
+                else:
+                    if line:
+                        self.nvim.func("cursor", line, 1)
+                    self.nvim.command("normal! zc")
+
+            self._in_editor_window(do_fold)
             if all:
-                self.nvim.command("normal! zM")
                 self._narrate("Fold all (zM)")
                 return {"success": True, "message": "All folded", "vim_cmd": "zM"}
-            if line:
-                self.nvim.func("cursor", line, 1)
-            self.nvim.command("normal! zc")
             self._narrate("Fold (zc)")
             return {"success": True, "vim_cmd": "zc"}
         except Exception as e:
@@ -2495,12 +2500,15 @@ Use this when the user says:
     def _handle_comment(self, start_line: int = None, end_line: int = None) -> dict:
         """Toggle comment."""
         try:
-            if start_line and end_line:
-                self.nvim.command(f"{start_line},{end_line}Commentary")
-                lines = end_line - start_line + 1
-            else:
-                self.nvim.command("Commentary")
-                lines = 1
+            def do_comment():
+                # Try native gc operator first (Neovim 0.10+), fall back to Commentary plugin
+                if start_line and end_line:
+                    self.nvim.command(f"{start_line},{end_line}normal gcc")
+                else:
+                    self.nvim.command("normal gcc")
+
+            self._in_editor_window(do_comment)
+            lines = (end_line - start_line + 1) if start_line and end_line else 1
             self._narrate("Toggle comment (gcc)")
             return {"success": True, "lines": lines, "vim_cmd": "gcc"}
         except Exception as e:
