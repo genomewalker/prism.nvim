@@ -1801,6 +1801,10 @@ Use this when the user says:
             # Track as active file for subsequent operations
             self.active_file = path
             self._narrate(f"Open file (:e {path})")
+            return {"success": True, "path": path, "active": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def _handle_save_file(self, path: str = None) -> dict:
         """Save the active file (or specified path)."""
         try:
@@ -2958,9 +2962,6 @@ Use this when the user says:
         if not self.active_file:
             raise ValueError("No active file. Use open_file first.")
         return self.active_file
-        # Not found, try to open it
-        self.nvim.command(f"edit {path}")
-        return self.nvim.call("nvim_get_current_buf")
 
     def _in_editor_window(self, func, path: str = None):
         """Run a function in the editor window, then return to current window.

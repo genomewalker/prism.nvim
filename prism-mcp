@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /home/kbd606/.local/share/prism.nvim
+exec /maps/projects/fernandezguerra/apps/opt/conda/envs/bioinfo/bin/python3 -m prism_nvim.mcp_server "$@"
