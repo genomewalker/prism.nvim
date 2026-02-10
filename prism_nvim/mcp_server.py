@@ -2632,7 +2632,7 @@ Use this when the user says:
         """Run a vim command."""
         try:
             # Protect terminal window
-            win_type = self.nvim.call("win_gettype")
+            win_type = self.nvim.func("win_gettype")
             if win_type == "terminal":
                 self.nvim.command("wincmd p")
 
