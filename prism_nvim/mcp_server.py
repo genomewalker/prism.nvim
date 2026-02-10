@@ -2659,14 +2659,12 @@ Use this when the user says:
     def _handle_run_command(self, command: str) -> dict:
         """Run a vim command."""
         try:
-            # Protect terminal window
-            win_type = self.nvim.func("win_gettype")
-            if win_type == "terminal":
-                self.nvim.command("wincmd p")
+            def do_command():
+                self.nvim.command(command)
 
-            self.nvim.command(command)
+            self._in_editor_window(do_command)
             self._narrate(f"Run command (:{command})")
-            return {"success": True, "protected": win_type == "terminal"}
+            return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
