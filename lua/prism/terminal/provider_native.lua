@@ -170,14 +170,17 @@ function M.open(cmd, env, opts)
   -- Stay in normal mode (don't auto-enter insert)
   vim.cmd("stopinsert")
 
-  -- Force resize after Claude Code TUI initializes (sends SIGWINCH)
-  vim.defer_fn(function()
+  -- Force resize at multiple intervals to catch Claude TUI initialization
+  local function trigger_resize()
     if state.winid and vim.api.nvim_win_is_valid(state.winid) then
       local w = vim.api.nvim_win_get_width(state.winid)
       vim.api.nvim_win_set_width(state.winid, w + 1)
       vim.api.nvim_win_set_width(state.winid, w)
     end
-  end, 200)
+  end
+  vim.defer_fn(trigger_resize, 100)
+  vim.defer_fn(trigger_resize, 500)
+  vim.defer_fn(trigger_resize, 1000)
 
   if opts.on_open then
     vim.schedule(function()
@@ -249,14 +252,17 @@ function M.toggle()
     -- Stay in normal mode for navigation
     vim.cmd("stopinsert")
 
-    -- Force resize after layout settles (sends SIGWINCH)
-    vim.defer_fn(function()
+    -- Force resize at multiple intervals (sends SIGWINCH)
+    local function trigger_resize()
       if state.winid and vim.api.nvim_win_is_valid(state.winid) then
         local w = vim.api.nvim_win_get_width(state.winid)
         vim.api.nvim_win_set_width(state.winid, w + 1)
         vim.api.nvim_win_set_width(state.winid, w)
       end
-    end, 200)
+    end
+    vim.defer_fn(trigger_resize, 100)
+    vim.defer_fn(trigger_resize, 500)
+    vim.defer_fn(trigger_resize, 1000)
 
     return true
   end
