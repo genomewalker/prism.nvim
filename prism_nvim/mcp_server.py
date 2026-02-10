@@ -2146,9 +2146,12 @@ Use this when the user says:
             # Escape special characters
             pattern_escaped = pattern.replace("/", "\\/")
             replacement_escaped = replacement.replace("/", "\\/")
-
             cmd = f"%s/{pattern_escaped}/{replacement_escaped}/{flags}"
-            self.nvim.command(cmd)
+
+            def do_replace():
+                self.nvim.command(cmd)
+
+            self._in_editor_window(do_replace)
             self._narrate(f"Replace (:{cmd})")
 
             # Count replacements (approximate)
