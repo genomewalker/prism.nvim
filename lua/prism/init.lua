@@ -6,8 +6,8 @@ local M = {}
 --- Plugin version
 M.version = {
   major = 0,
-  minor = 1,
-  patch = 0,
+  minor = 4,
+  patch = 14,
 }
 
 --- Get version string
