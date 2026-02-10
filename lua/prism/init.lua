@@ -367,9 +367,6 @@ function M.setup(opts)
   -- 7. Setup cleanup
   setup_cleanup()
 
-  -- 8. Enable mouse for window resizing
-  vim.opt.mouse = "a"
-
   -- Mark as initialized
   state.initialized = true
 
