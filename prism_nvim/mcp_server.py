@@ -2213,7 +2213,7 @@ Use this when the user says:
     def _handle_goto_line(self, line: int) -> dict:
         """Go to a specific line."""
         try:
-            self.nvim.func("cursor", line, 1)
+            self._in_editor_window(lambda: self.nvim.func("cursor", line, 1))
             self._narrate(f"Go to line ({line}G)")
             return {"success": True, "line": line}
         except Exception as e:
@@ -2222,9 +2222,12 @@ Use this when the user says:
     def _handle_goto_matching(self) -> dict:
         """Go to matching bracket."""
         try:
-            start_pos = self.nvim.call("getpos", ".")
-            self.nvim.command("normal! %")
-            end_pos = self.nvim.call("getpos", ".")
+            def do_match():
+                start_pos = self.nvim.call("getpos", ".")
+                self.nvim.command("normal! %")
+                end_pos = self.nvim.call("getpos", ".")
+                return start_pos, end_pos
+            start_pos, end_pos = self._in_editor_window(do_match)
             self._narrate("Go to matching (%)")
             return {
                 "success": True,
@@ -2237,9 +2240,11 @@ Use this when the user says:
     def _handle_next_error(self, severity: str = None) -> dict:
         """Jump to next diagnostic."""
         try:
-            self.nvim.command("lua vim.diagnostic.goto_next()")
+            def do_next():
+                self.nvim.command("lua vim.diagnostic.goto_next()")
+                return self.nvim.call("getpos", ".")
+            pos = self._in_editor_window(do_next)
             self._narrate("Next diagnostic (]d)")
-            pos = self.nvim.call("getpos", ".")
             return {"success": True, "line": pos[1], "severity": severity or "any"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2247,9 +2252,11 @@ Use this when the user says:
     def _handle_prev_error(self, severity: str = None) -> dict:
         """Jump to previous diagnostic."""
         try:
-            self.nvim.command("lua vim.diagnostic.goto_prev()")
+            def do_prev():
+                self.nvim.command("lua vim.diagnostic.goto_prev()")
+                return self.nvim.call("getpos", ".")
+            pos = self._in_editor_window(do_prev)
             self._narrate("Previous diagnostic ([d)")
-            pos = self.nvim.call("getpos", ".")
             return {"success": True, "line": pos[1], "severity": severity or "any"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2257,10 +2264,13 @@ Use this when the user says:
     def _handle_jump_back(self, count: int = 1) -> dict:
         """Jump back in jump list."""
         try:
-            self.nvim.command(f"normal! {count}\x0f")  # Ctrl-O
+            def do_jump():
+                self.nvim.command(f"normal! {count}\x0f")  # Ctrl-O
+                path = self.nvim.func("expand", "%:p")
+                pos = self.nvim.call("getpos", ".")
+                return path, pos
+            path, pos = self._in_editor_window(do_jump)
             self._narrate(f"Jump back ({count}<C-o>)")
-            path = self.nvim.func("expand", "%:p")
-            pos = self.nvim.call("getpos", ".")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-o>"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2268,10 +2278,13 @@ Use this when the user says:
     def _handle_jump_forward(self, count: int = 1) -> dict:
         """Jump forward in jump list."""
         try:
-            self.nvim.command(f"normal! {count}\x09")  # Ctrl-I
+            def do_jump():
+                self.nvim.command(f"normal! {count}\x09")  # Ctrl-I
+                path = self.nvim.func("expand", "%:p")
+                pos = self.nvim.call("getpos", ".")
+                return path, pos
+            path, pos = self._in_editor_window(do_jump)
             self._narrate(f"Jump forward ({count}<C-i>)")
-            path = self.nvim.func("expand", "%:p")
-            pos = self.nvim.call("getpos", ".")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-i>"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2279,8 +2292,10 @@ Use this when the user says:
     def _handle_undo(self, count: int = 1) -> dict:
         """Undo changes."""
         try:
-            for _ in range(count):
-                self.nvim.command("undo")
+            def do_undo():
+                for _ in range(count):
+                    self.nvim.command("undo")
+            self._in_editor_window(do_undo)
             self._narrate(f"Undo ({count}u)")
             return {"success": True, "count": count, "vim_cmd": "u"}
         except Exception as e:
@@ -2289,8 +2304,10 @@ Use this when the user says:
     def _handle_redo(self, count: int = 1) -> dict:
         """Redo changes."""
         try:
-            for _ in range(count):
-                self.nvim.command("redo")
+            def do_redo():
+                for _ in range(count):
+                    self.nvim.command("redo")
+            self._in_editor_window(do_redo)
             self._narrate(f"Redo ({count}<C-r>)")
             return {"success": True, "count": count}
         except Exception as e:
@@ -2801,6 +2818,19 @@ Use this when the user says:
         # Not found, try to open it
         self.nvim.command(f"edit {path}")
         return self.nvim.call("nvim_get_current_buf")
+
+    def _in_editor_window(self, func):
+        """Run a function in the editor window, then return to current window."""
+        editor_win = self.nvim._find_editor_window()
+        if editor_win:
+            current_win = self.nvim.call("nvim_get_current_win")
+            self.nvim.call("nvim_set_current_win", editor_win)
+            try:
+                return func()
+            finally:
+                self.nvim.call("nvim_set_current_win", current_win)
+        else:
+            return func()
 
     def _narrate(self, message: str):
         """Show vim tip if narrated mode is enabled."""
