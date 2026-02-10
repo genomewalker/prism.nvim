@@ -7,7 +7,7 @@ local M = {}
 M.version = {
   major = 0,
   minor = 4,
-  patch = 15,
+  patch = 16,
 }
 
 --- Get version string
