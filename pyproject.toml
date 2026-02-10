@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prism-nvim"
-version = "0.4.13"
+version = "0.4.17"
 description = "The Ultimate Claude Code Integration for Neovim - Full IDE Control via MCP"
 readme = "README.md"
 license = "MIT"
