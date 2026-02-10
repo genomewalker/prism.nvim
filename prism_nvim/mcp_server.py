@@ -2051,9 +2051,26 @@ Use this when the user says:
         """Get LSP diagnostics."""
         try:
             buf = self._get_buffer(path)
-            diags = self.nvim.call("nvim_diagnostic_get", buf, {})
+            # Use Lua to get diagnostics (vim.diagnostic.get is not an RPC method)
+            diags = self.nvim.lua(
+                """
+                local buf = ...
+                local diags = vim.diagnostic.get(buf)
+                local result = {}
+                for _, d in ipairs(diags) do
+                    table.insert(result, {
+                        lnum = d.lnum,
+                        col = d.col,
+                        message = d.message,
+                        severity = d.severity
+                    })
+                end
+                return result
+                """,
+                buf,
+            )
             result = []
-            for d in diags:
+            for d in diags or []:
                 severity_map = {1: "error", 2: "warning", 3: "info", 4: "hint"}
                 result.append(
                     {
