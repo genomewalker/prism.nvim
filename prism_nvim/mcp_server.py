@@ -1804,10 +1804,13 @@ Use this when the user says:
     def _handle_save_file(self, path: str = None) -> dict:
         """Save the current buffer."""
         try:
-            if path:
-                self.nvim.command(f"write {path}")
-            else:
-                self.nvim.command("write")
+            def do_save():
+                if path:
+                    self.nvim.command(f"write {path}")
+                else:
+                    self.nvim.command("write")
+
+            self._in_editor_window(do_save)
             self._narrate("Save file (:w)")
             return {"success": True}
         except Exception as e:
@@ -2447,13 +2450,18 @@ Use this when the user says:
     def _handle_unfold(self, line: int = None, all: bool = False) -> dict:
         """Unfold code."""
         try:
+            def do_unfold():
+                if all:
+                    self.nvim.command("normal! zR")
+                else:
+                    if line:
+                        self.nvim.func("cursor", line, 1)
+                    self.nvim.command("normal! zo")
+
+            self._in_editor_window(do_unfold)
             if all:
-                self.nvim.command("normal! zR")
                 self._narrate("Unfold all (zR)")
                 return {"success": True, "message": "All unfolded", "vim_cmd": "zR"}
-            if line:
-                self.nvim.func("cursor", line, 1)
-            self.nvim.command("normal! zo")
             self._narrate("Unfold (zo)")
             return {"success": True, "vim_cmd": "zo"}
         except Exception as e:
@@ -2517,10 +2525,13 @@ Use this when the user says:
     def _handle_duplicate_line(self, line: int = None, count: int = 1) -> dict:
         """Duplicate a line."""
         try:
-            if line:
-                self.nvim.func("cursor", line, 1)
-            for _ in range(count):
-                self.nvim.command("normal! yyp")
+            def do_duplicate():
+                if line:
+                    self.nvim.func("cursor", line, 1)
+                for _ in range(count):
+                    self.nvim.command("normal! yyp")
+
+            self._in_editor_window(do_duplicate)
             self._narrate(f"Duplicate line (yyp x{count})")
             return {"success": True, "copies": count, "vim_cmd": "yyp"}
         except Exception as e:
@@ -2531,12 +2542,14 @@ Use this when the user says:
     ) -> dict:
         """Move line(s) up or down."""
         try:
-            if direction == "up":
-                self.nvim.command("move -2")
-                vim_cmd = ":move -2"
-            else:
-                self.nvim.command("move +1")
-                vim_cmd = ":move +1"
+            def do_move():
+                if direction == "up":
+                    self.nvim.command("move -2")
+                else:
+                    self.nvim.command("move +1")
+
+            self._in_editor_window(do_move)
+            vim_cmd = ":move -2" if direction == "up" else ":move +1"
             self._narrate(f"Move line {direction} ({vim_cmd})")
             return {"success": True, "direction": direction, "vim_cmd": vim_cmd}
         except Exception as e:
@@ -2545,12 +2558,14 @@ Use this when the user says:
     def _handle_delete_line(self, start_line: int = None, end_line: int = None) -> dict:
         """Delete line(s)."""
         try:
-            if start_line and end_line:
-                self.nvim.command(f"{start_line},{end_line}delete")
-                deleted = end_line - start_line + 1
-            else:
-                self.nvim.command("delete")
-                deleted = 1
+            def do_delete():
+                if start_line and end_line:
+                    self.nvim.command(f"{start_line},{end_line}delete")
+                else:
+                    self.nvim.command("delete")
+
+            self._in_editor_window(do_delete)
+            deleted = (end_line - start_line + 1) if start_line and end_line else 1
             self._narrate("Delete line (dd)")
             return {"success": True, "deleted": deleted, "vim_cmd": "dd"}
         except Exception as e:
@@ -2559,7 +2574,10 @@ Use this when the user says:
     def _handle_join_lines(self, count: int = 2) -> dict:
         """Join lines."""
         try:
-            self.nvim.command(f"normal! {count - 1}J")
+            def do_join():
+                self.nvim.command(f"normal! {count - 1}J")
+
+            self._in_editor_window(do_join)
             self._narrate(f"Join {count} lines (J)")
             return {"success": True, "joined": count, "vim_cmd": "J"}
         except Exception as e:
@@ -2568,8 +2586,11 @@ Use this when the user says:
     def _handle_select_word(self) -> dict:
         """Select word under cursor."""
         try:
-            self.nvim.command("normal! viw")
-            word = self.nvim.func("expand", "<cword>")
+            def do_select():
+                self.nvim.command("normal! viw")
+                return self.nvim.func("expand", "<cword>")
+
+            word = self._in_editor_window(do_select)
             return {"success": True, "word": word}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2577,13 +2598,15 @@ Use this when the user says:
     def _handle_select_line(self, start_line: int = None, end_line: int = None) -> dict:
         """Select line(s)."""
         try:
-            if start_line and end_line:
-                self.nvim.func("cursor", start_line, 1)
-                self.nvim.command(f"normal! V{end_line - start_line}j")
-                lines = end_line - start_line + 1
-            else:
-                self.nvim.command("normal! V")
-                lines = 1
+            def do_select():
+                if start_line and end_line:
+                    self.nvim.func("cursor", start_line, 1)
+                    self.nvim.command(f"normal! V{end_line - start_line}j")
+                else:
+                    self.nvim.command("normal! V")
+
+            self._in_editor_window(do_select)
+            lines = (end_line - start_line + 1) if start_line and end_line else 1
             return {"success": True, "lines": lines}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -2594,7 +2617,11 @@ Use this when the user says:
             char_map = {"braces": "B", "brackets": "[", "parens": "b", "quotes": '"'}
             char = char_map.get(type, "B")
             prefix = "a" if around else "i"
-            self.nvim.command(f"normal! v{prefix}{char}")
+
+            def do_select():
+                self.nvim.command(f"normal! v{prefix}{char}")
+
+            self._in_editor_window(do_select)
             self._narrate(f"Select {type} (v{prefix}{char})")
             return {"success": True, "type": type, "vim_cmd": f"v{prefix}{char}"}
         except Exception as e:
@@ -2603,8 +2630,11 @@ Use this when the user says:
     def _handle_select_all(self) -> dict:
         """Select all content."""
         try:
-            self.nvim.command("normal! ggVG")
-            line_count = self.nvim.func("line", "$")
+            def do_select():
+                self.nvim.command("normal! ggVG")
+                return self.nvim.func("line", "$")
+
+            line_count = self._in_editor_window(do_select)
             self._narrate("Select all (ggVG)")
             return {"success": True, "lines": line_count}
         except Exception as e:
@@ -2613,14 +2643,16 @@ Use this when the user says:
     def _handle_indent(self, start_line: int = None, end_line: int = None, count: int = 1) -> dict:
         """Increase indentation."""
         try:
-            if start_line and end_line:
-                for _ in range(count):
-                    self.nvim.command(f"{start_line},{end_line}>")
-                lines = end_line - start_line + 1
-            else:
-                for _ in range(count):
-                    self.nvim.command("normal! >>")
-                lines = 1
+            def do_indent():
+                if start_line and end_line:
+                    for _ in range(count):
+                        self.nvim.command(f"{start_line},{end_line}>")
+                else:
+                    for _ in range(count):
+                        self.nvim.command("normal! >>")
+
+            self._in_editor_window(do_indent)
+            lines = (end_line - start_line + 1) if start_line and end_line else 1
             self._narrate("Indent (>>)")
             return {"success": True, "lines": lines}
         except Exception as e:
@@ -2629,14 +2661,16 @@ Use this when the user says:
     def _handle_dedent(self, start_line: int = None, end_line: int = None, count: int = 1) -> dict:
         """Decrease indentation."""
         try:
-            if start_line and end_line:
-                for _ in range(count):
-                    self.nvim.command(f"{start_line},{end_line}<")
-                lines = end_line - start_line + 1
-            else:
-                for _ in range(count):
-                    self.nvim.command("normal! <<")
-                lines = 1
+            def do_dedent():
+                if start_line and end_line:
+                    for _ in range(count):
+                        self.nvim.command(f"{start_line},{end_line}<")
+                else:
+                    for _ in range(count):
+                        self.nvim.command("normal! <<")
+
+            self._in_editor_window(do_dedent)
+            lines = (end_line - start_line + 1) if start_line and end_line else 1
             self._narrate("Dedent (<<)")
             return {"success": True, "lines": lines}
         except Exception as e:
