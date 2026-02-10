@@ -731,7 +731,10 @@ Use this when the user says:
                 "type": "object",
                 "properties": {
                     "line": {"type": "integer", "description": "Line number (1-indexed)"},
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
                 "required": ["line"],
             },
@@ -749,7 +752,10 @@ Use this when the user says:
             input_schema={
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
             },
             handler=self._handle_goto_matching,
@@ -770,7 +776,10 @@ Use this when the user says:
                         "type": "string",
                         "description": "Filter by severity: error, warning, info, hint",
                     },
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
             },
             handler=self._handle_next_error,
@@ -791,7 +800,10 @@ Use this when the user says:
                         "type": "string",
                         "description": "Filter by severity: error, warning, info, hint",
                     },
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
             },
             handler=self._handle_prev_error,
@@ -858,7 +870,10 @@ Use this when the user says:
                         "description": "Number of changes to undo",
                         "default": 1,
                     },
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
             },
             handler=self._handle_undo,
@@ -880,7 +895,10 @@ Use this when the user says:
                         "description": "Number of changes to redo",
                         "default": 1,
                     },
-                    "path": {"type": "string", "description": "Target file path (uses current editor buffer if not specified)"},
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (uses current editor buffer if not specified)",
+                    },
                 },
             },
             handler=self._handle_redo,
@@ -2232,11 +2250,13 @@ Use this when the user says:
     def _handle_goto_matching(self, path: str = None) -> dict:
         """Go to matching bracket."""
         try:
+
             def do_match():
                 start_pos = self.nvim.call("getpos", ".")
                 self.nvim.command("normal! %")
                 end_pos = self.nvim.call("getpos", ".")
                 return start_pos, end_pos
+
             start_pos, end_pos = self._in_editor_window(do_match, path)
             self._narrate("Go to matching (%)")
             return {
@@ -2250,9 +2270,11 @@ Use this when the user says:
     def _handle_next_error(self, severity: str = None, path: str = None) -> dict:
         """Jump to next diagnostic."""
         try:
+
             def do_next():
                 self.nvim.command("lua vim.diagnostic.goto_next()")
                 return self.nvim.call("getpos", ".")
+
             pos = self._in_editor_window(do_next, path)
             self._narrate("Next diagnostic (]d)")
             return {"success": True, "line": pos[1], "severity": severity or "any"}
@@ -2262,9 +2284,11 @@ Use this when the user says:
     def _handle_prev_error(self, severity: str = None, path: str = None) -> dict:
         """Jump to previous diagnostic."""
         try:
+
             def do_prev():
                 self.nvim.command("lua vim.diagnostic.goto_prev()")
                 return self.nvim.call("getpos", ".")
+
             pos = self._in_editor_window(do_prev, path)
             self._narrate("Previous diagnostic ([d)")
             return {"success": True, "line": pos[1], "severity": severity or "any"}
@@ -2274,11 +2298,13 @@ Use this when the user says:
     def _handle_jump_back(self, count: int = 1) -> dict:
         """Jump back in jump list."""
         try:
+
             def do_jump():
                 self.nvim.command(f"normal! {count}\x0f")  # Ctrl-O
                 path = self.nvim.func("expand", "%:p")
                 pos = self.nvim.call("getpos", ".")
                 return path, pos
+
             path, pos = self._in_editor_window(do_jump)
             self._narrate(f"Jump back ({count}<C-o>)")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-o>"}
@@ -2288,11 +2314,13 @@ Use this when the user says:
     def _handle_jump_forward(self, count: int = 1) -> dict:
         """Jump forward in jump list."""
         try:
+
             def do_jump():
                 self.nvim.command(f"normal! {count}\x09")  # Ctrl-I
                 path = self.nvim.func("expand", "%:p")
                 pos = self.nvim.call("getpos", ".")
                 return path, pos
+
             path, pos = self._in_editor_window(do_jump)
             self._narrate(f"Jump forward ({count}<C-i>)")
             return {"success": True, "path": path, "line": pos[1], "vim_cmd": "<C-i>"}
@@ -2302,9 +2330,11 @@ Use this when the user says:
     def _handle_undo(self, count: int = 1, path: str = None) -> dict:
         """Undo changes."""
         try:
+
             def do_undo():
                 for _ in range(count):
                     self.nvim.command("undo")
+
             self._in_editor_window(do_undo, path)
             self._narrate(f"Undo ({count}u)")
             return {"success": True, "count": count, "vim_cmd": "u"}
@@ -2314,9 +2344,11 @@ Use this when the user says:
     def _handle_redo(self, count: int = 1, path: str = None) -> dict:
         """Redo changes."""
         try:
+
             def do_redo():
                 for _ in range(count):
                     self.nvim.command("redo")
+
             self._in_editor_window(do_redo, path)
             self._narrate(f"Redo ({count}<C-r>)")
             return {"success": True, "count": count}
