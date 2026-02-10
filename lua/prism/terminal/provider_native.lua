@@ -181,6 +181,8 @@ function M.open(cmd, env, opts)
   vim.defer_fn(trigger_resize, 100)
   vim.defer_fn(trigger_resize, 500)
   vim.defer_fn(trigger_resize, 1000)
+  vim.defer_fn(trigger_resize, 2000)  -- After cc-status appears
+  vim.defer_fn(trigger_resize, 3000)
 
   if opts.on_open then
     vim.schedule(function()
@@ -263,6 +265,8 @@ function M.toggle()
     vim.defer_fn(trigger_resize, 100)
     vim.defer_fn(trigger_resize, 500)
     vim.defer_fn(trigger_resize, 1000)
+    vim.defer_fn(trigger_resize, 2000)  -- After cc-status appears
+    vim.defer_fn(trigger_resize, 3000)
 
     return true
   end
