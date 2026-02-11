@@ -92,7 +92,7 @@ class PrismMCPServer:
         self.active_file: Optional[str] = None
 
         # Server version for debugging
-        self._version = "0.4.21"
+        self._version = "0.4.22"
 
         # Global config - can be changed via set_config tool
         self.config = {
