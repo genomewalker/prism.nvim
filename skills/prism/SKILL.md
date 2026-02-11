@@ -145,7 +145,7 @@ fi
 ```bash
 python3 -c "import msgpack" 2>/dev/null && echo "msgpack:ok" || echo "msgpack:missing"
 [ -L ~/.local/share/nvim/site/pack/prism/start/prism.nvim ] && echo "plugin:linked" || echo "plugin:missing"
-grep -q '"prism-nvim"' ~/.claude/settings.json 2>/dev/null && echo "mcp:configured" || echo "mcp:missing"
+claude mcp list 2>&1 | grep -q "prism-nvim" && echo "mcp:configured" || echo "mcp:missing"
 [ -L ~/.claude/rules/prism-nvim.md ] && echo "rules:linked" || echo "rules:missing"
 [ -f ~/.config/nvim/lua/plugins/prism.lua ] && echo "nvim_config:exists" || echo "nvim_config:missing"
 ```
@@ -259,26 +259,46 @@ else
 fi
 ```
 
-### Step 4: Register MCP Server
+### Step 4: Install Python Package and Create MCP Wrapper
 
-**First check** if prism-nvim already exists in `~/.claude/settings.json`:
+Install prism_nvim as a pip package:
 
 ```bash
-grep -q '"prism-nvim"' ~/.claude/settings.json && echo "MCP already configured"
+cd ~/.local/share/prism.nvim && pip install -e . 2>&1 | tail -3
 ```
 
-**Only if not configured**, use Edit tool to add to mcpServers:
+Create the `prism-mcp` wrapper script:
 
-```json
-"prism-nvim": {
-  "type": "stdio",
-  "command": "python3",
-  "args": ["-m", "prism_nvim.mcp_server"],
-  "cwd": "~/.local/share/prism.nvim"
-}
+```bash
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/prism-mcp << 'EOF'
+#!/usr/bin/env python3
+import sys
+from prism_nvim.mcp_server import main
+if __name__ == '__main__':
+    sys.exit(main())
+EOF
+chmod +x ~/.local/bin/prism-mcp
+echo "Created prism-mcp wrapper"
 ```
 
-### Step 5: Create Neovim Config
+### Step 5: Register MCP Server
+
+**First check** if prism-nvim MCP is already configured:
+
+```bash
+claude mcp list 2>&1 | grep -q "prism-nvim" && echo "MCP already configured"
+```
+
+**Only if not configured**, use the claude CLI to add the MCP server:
+
+```bash
+claude mcp add --transport stdio --scope user prism-nvim -- prism-mcp
+```
+
+This adds prism-nvim to user-level settings so it's available in all projects.
+
+### Step 6: Create Neovim Config
 
 **Check if exists** first: `~/.config/nvim/lua/plugins/prism.lua`
 
@@ -319,7 +339,7 @@ return {
 }
 ```
 
-### Step 6: Link Claude Instructions
+### Step 7: Link Claude Instructions
 
 **Check first**:
 ```bash
@@ -333,7 +353,7 @@ ln -sf ~/.local/share/prism.nvim/CLAUDE.md ~/.claude/rules/prism-nvim.md
 echo "Rules linked"
 ```
 
-### Step 7: Add or Update Shell Aliases
+### Step 8: Add or Update Shell Aliases
 
 **First, check existing shell functions and compare with reference:**
 
