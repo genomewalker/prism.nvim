@@ -101,10 +101,24 @@ class PrismMCPServer:
         # Bookmarks storage
         self.bookmarks: dict[str, dict] = {}
 
+        # Server version for debugging
+        self._version = "0.4.19"
+
         self._setup_tools()
 
     def _setup_tools(self):
         """Register all MCP tools."""
+
+        # =====================================================================
+        # Debug Tool
+        # =====================================================================
+
+        self._register_tool(
+            name="debug_state",
+            description="Debug: Check MCP server state (active file, version).",
+            input_schema={"type": "object", "properties": {}},
+            handler=self._handle_debug_state,
+        )
 
         # =====================================================================
         # File Operations
@@ -1774,6 +1788,14 @@ Use this when the user says:
     # =========================================================================
     # Tool Handlers
     # =========================================================================
+
+    def _handle_debug_state(self) -> dict:
+        """Debug: return server state."""
+        return {
+            "version": self._version,
+            "active_file": self.active_file,
+            "config": self.config,
+        }
 
     def _handle_open_file(
         self, path: str, line: int = None, column: int = None, keep_focus: bool = True
