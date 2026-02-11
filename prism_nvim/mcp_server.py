@@ -1881,6 +1881,20 @@ Use this when the user says:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def _handle_get_buffer_lines(
+        self, path: str = None, start_line: int = 1, end_line: int = -1
+    ) -> dict:
+        """Get specific lines from buffer (uses active file if no path specified)."""
+        try:
+            buf = self._get_buffer(path)
+            # Convert to 0-indexed
+            start = max(0, start_line - 1)
+            end = end_line if end_line == -1 else end_line
+            lines = self.nvim.call("nvim_buf_get_lines", buf, start, end, False)
+            return {"lines": lines, "start_line": start_line}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def _handle_set_buffer_content(
         self, content: str, path: str = None, auto_save: bool = False
     ) -> dict:
