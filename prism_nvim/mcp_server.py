@@ -102,7 +102,7 @@ class PrismMCPServer:
         self.bookmarks: dict[str, dict] = {}
 
         # Server version for debugging
-        self._version = "0.4.19"
+        self._version = "0.4.20"
 
         self._setup_tools()
 
