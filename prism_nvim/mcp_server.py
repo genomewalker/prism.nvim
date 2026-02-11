@@ -2970,10 +2970,13 @@ Use this when the user says:
     def _get_buffer(self, path: str = None) -> int:
         """Get buffer number for path (or active file, or current buffer)."""
         # Use active_file as default if no path specified
+        logger.info(f"_get_buffer called: path={path}, active_file={self.active_file}")
         if path is None and self.active_file:
             path = self.active_file
+            logger.info(f"Using active_file: {path}")
 
         if path is None:
+            logger.info("No path, returning current buffer")
             return self.nvim.call("nvim_get_current_buf")
 
         bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
