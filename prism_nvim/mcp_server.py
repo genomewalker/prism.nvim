@@ -91,6 +91,9 @@ class PrismMCPServer:
         # Active file tracking - remembers last opened file for smart defaults
         self.active_file: Optional[str] = None
 
+        # Server version for debugging
+        self._version = "0.4.21"
+
         # Global config - can be changed via set_config tool
         self.config = {
             "auto_save": False,  # Auto-save after edits
@@ -100,9 +103,6 @@ class PrismMCPServer:
 
         # Bookmarks storage
         self.bookmarks: dict[str, dict] = {}
-
-        # Server version for debugging
-        self._version = "0.4.20"
 
         self._setup_tools()
 
@@ -1817,37 +1817,25 @@ Use this when the user says:
                 if editor_win:
                     current_win = self.nvim.call("nvim_get_current_win")
                     self.nvim.call("nvim_set_current_win", editor_win)
+                    self.nvim.func("cursor", line, column or 1)
                     if keep_focus:
                         self.nvim.call("nvim_set_current_win", current_win)
 
             # Track as active file for subsequent operations
             self.active_file = path
+            logger.info(f"Set active_file to: {path}")
             self._narrate(f"Open file (:e {path})")
             return {"success": True, "path": path, "active": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def _handle_save_file(self, path: str = None) -> dict:
-        """Save the active file (or specified path)."""
+        """Save the current buffer."""
         try:
-            # Use active_file as default
-            target_path = path or self.active_file
-            if not target_path:
-                return {"success": False, "error": "No file specified and no active file. Use open_file first."}
-
-            # Get buffer and validate it's editable
-            buf = self._get_buffer(target_path)
-            if not self._validate_buffer_editable(buf):
-                return {"success": False, "error": f"Buffer is not editable (terminal or special buffer)"}
-
             def do_save():
-                self.nvim.command(f"write {target_path}")
-
-            self._in_editor_window(do_save, target_path)
-            self._narrate(f"Save file (:w {target_path})")
-            return {"success": True, "path": target_path}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+                if path:
+                    self.nvim.command(f"write {path}")
+                else:
                     self.nvim.command("write")
 
             self._in_editor_window(do_save)
@@ -1906,7 +1894,7 @@ Use this when the user says:
     def _handle_get_buffer_lines(
         self, path: str = None, start_line: int = 1, end_line: int = -1
     ) -> dict:
-        """Get specific lines from buffer (uses active file if no path specified)."""
+        """Get specific lines from buffer."""
         try:
             buf = self._get_buffer(path)
             # Convert to 0-indexed
@@ -1920,17 +1908,14 @@ Use this when the user says:
     def _handle_set_buffer_content(
         self, content: str, path: str = None, auto_save: bool = False
     ) -> dict:
-        """Set buffer content (uses active file if no path specified)."""
+        """Set buffer content."""
         try:
             buf = self._get_buffer(path)
-            if not self._validate_buffer_editable(buf):
-                return {"success": False, "error": "Buffer is not editable (terminal or special buffer)"}
-
             lines = content.split("\n")
             self.nvim.call("nvim_buf_set_lines", buf, 0, -1, False, lines)
 
             if auto_save or self.config.get("auto_save", False):
-                self._in_editor_window(lambda: self.nvim.command("write"), path or self.active_file)
+                self.nvim.command("write")
                 return {"success": True, "lines_changed": len(lines), "saved": True}
 
             return {"success": True, "lines_changed": len(lines)}
@@ -1945,36 +1930,16 @@ Use this when the user says:
         path: str = None,
         auto_save: bool = False,
     ) -> dict:
-        """Edit specific lines in buffer (uses active file if no path specified)."""
+        """Edit specific lines in buffer."""
         try:
             buf = self._get_buffer(path)
-            if not self._validate_buffer_editable(buf):
-                return {"success": False, "error": "Buffer is not editable (terminal or special buffer)"}
-
             # Convert to 0-indexed
             start = max(0, start_line - 1)
             self.nvim.call("nvim_buf_set_lines", buf, start, end_line, False, new_lines)
 
             if auto_save or self.config.get("auto_save", False):
-                self._in_editor_window(lambda: self.nvim.command("write"), path or self.active_file)
-    def _handle_insert_text(self, line: int, column: int, text: str, path: str = None) -> dict:
-        """Insert text at position (uses active file if no path specified)."""
-        try:
-            buf = self._get_buffer(path)
-            if not self._validate_buffer_editable(buf):
-                return {"success": False, "error": "Buffer is not editable (terminal or special buffer)"}
-
-            # Get current line content
-            lines = self.nvim.call("nvim_buf_get_lines", buf, line - 1, line, False)
-            if lines:
-                current = lines[0]
-                new_content = current[:column] + text + current[column:]
-                # Handle newlines in inserted text
-                new_lines = new_content.split("\n")
-                self.nvim.call("nvim_buf_set_lines", buf, line - 1, line, False, new_lines)
-            return {"success": True}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+                self.nvim.command("write")
+                return {"success": True, "lines_changed": len(new_lines), "saved": True}
 
             return {"success": True, "lines_changed": len(new_lines)}
         except Exception as e:
@@ -2967,6 +2932,9 @@ Use this when the user says:
             return {"success": False, "error": str(e)}
 
     # =========================================================================
+    # Helper Methods
+    # =========================================================================
+
     def _get_buffer(self, path: str = None) -> int:
         """Get buffer number for path (or active file, or current buffer)."""
         # Use active_file as default if no path specified
@@ -2976,7 +2944,7 @@ Use this when the user says:
             logger.info(f"Using active_file: {path}")
 
         if path is None:
-            logger.info("No path, returning current buffer")
+            logger.info("No path and no active_file, returning current buffer")
             return self.nvim.call("nvim_get_current_buf")
 
         bufs = self.nvim.func("getbufinfo", {"buflisted": 1})
@@ -2992,15 +2960,10 @@ Use this when the user says:
         """Check if buffer is editable (not terminal or special buffer)."""
         buftype = self.nvim.call("nvim_get_option_value", "buftype", {"buf": buf})
         if buftype in ("terminal", "nofile", "prompt", "quickfix"):
+            logger.info(f"Buffer {buf} not editable: buftype={buftype}")
             return False
         modifiable = self.nvim.call("nvim_get_option_value", "modifiable", {"buf": buf})
         return modifiable
-
-    def _get_active_file(self) -> str:
-        """Get active file path, raising error if none set."""
-        if not self.active_file:
-            raise ValueError("No active file. Use open_file first.")
-        return self.active_file
 
     def _in_editor_window(self, func, path: str = None):
         """Run a function in the editor window, then return to current window.
