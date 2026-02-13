@@ -27,43 +27,84 @@ HIDDEN_TOOLS = {
     # Debug
     "debug_state",
     # Buffer details (use edit_buffer instead)
-    "get_buffer_lines", "insert_text", "get_open_files",
+    "get_buffer_lines",
+    "insert_text",
+    "get_open_files",
     # Cursor/selection details
-    "get_cursor_position", "set_cursor_position", "get_selection",
-    "select_word", "select_line", "select_block", "select_all",
+    "get_cursor_position",
+    "set_cursor_position",
+    "get_selection",
+    "select_word",
+    "select_line",
+    "select_block",
+    "select_all",
     # Window management
-    "split_window", "close_window", "get_windows",
+    "split_window",
+    "close_window",
+    "get_windows",
     # LSP advanced
-    "get_hover_info", "format_file", "get_references", "rename_symbol",
-    "code_actions", "list_symbols", "goto_symbol",
+    "get_hover_info",
+    "format_file",
+    "get_references",
+    "rename_symbol",
+    "code_actions",
+    "list_symbols",
+    "goto_symbol",
     # Git advanced
-    "git_stage", "git_commit", "git_blame", "git_log",
+    "git_stage",
+    "git_commit",
+    "git_blame",
+    "git_log",
     # Navigation advanced
-    "goto_matching", "jump_back", "jump_forward",
+    "goto_matching",
+    "jump_back",
+    "jump_forward",
     # Undo/redo
-    "undo", "redo",
+    "undo",
+    "redo",
     # Folding
-    "fold", "unfold",
+    "fold",
+    "unfold",
     # Bookmarks
-    "bookmark", "goto_bookmark", "list_bookmarks", "delete_bookmark",
+    "bookmark",
+    "goto_bookmark",
+    "list_bookmarks",
+    "delete_bookmark",
     # Line operations
-    "comment", "duplicate_line", "move_line", "delete_line", "join_lines",
+    "comment",
+    "duplicate_line",
+    "move_line",
+    "delete_line",
+    "join_lines",
     # Indentation
-    "indent", "dedent",
+    "indent",
+    "dedent",
     # Terminal
     "open_terminal",
     # Notification/diff
-    "notify", "diff_preview",
+    "notify",
+    "diff_preview",
     # Config
-    "get_config", "set_config",
+    "get_config",
+    "set_config",
     # Learning vim
-    "explain_command", "suggest_command", "vim_cheatsheet", "set_trust_mode",
+    "explain_command",
+    "suggest_command",
+    "vim_cheatsheet",
+    "set_trust_mode",
     # Harpoon
-    "harpoon_add", "harpoon_list", "harpoon_goto", "harpoon_remove",
+    "harpoon_add",
+    "harpoon_list",
+    "harpoon_goto",
+    "harpoon_remove",
     # Trouble/todos
-    "trouble_toggle", "search_todos", "next_todo", "prev_todo",
+    "trouble_toggle",
+    "search_todos",
+    "next_todo",
+    "prev_todo",
     # Spectre
-    "spectre_open", "spectre_word",
+    "spectre_open",
+    "spectre_word",
 }
 
 
@@ -795,7 +836,7 @@ Use this when the user says:
                     "line": {"type": "integer", "description": "Line number (1-indexed)"},
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
                 "required": ["line"],
@@ -816,7 +857,7 @@ Use this when the user says:
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
             },
@@ -840,7 +881,7 @@ Use this when the user says:
                     },
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
             },
@@ -864,7 +905,7 @@ Use this when the user says:
                     },
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
             },
@@ -934,7 +975,7 @@ Use this when the user says:
                     },
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
             },
@@ -959,7 +1000,7 @@ Use this when the user says:
                     },
                     "path": {
                         "type": "string",
-                        "description": "Target file path (uses current editor buffer if not specified)",
+                        "description": "File path (default: current buffer)",
                     },
                 },
             },
@@ -1807,8 +1848,10 @@ Use this when the user says:
 
         self._register_tool(
             name="advanced",
-            description="""Gateway to hidden/advanced tools. Use action='list' to see all 60+ hidden tools, or call directly with tool='<name>' and arguments={...}.
+            description="""Gateway to hidden/advanced tools.
 
+Use action='list' to see all 60+ hidden tools.
+Or call directly: tool='<name>', arguments={...}.
 Example: {"tool": "git_blame", "arguments": {}}""",
             input_schema={
                 "type": "object",
@@ -1907,6 +1950,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_save_file(self, path: str = None) -> dict:
         """Save the current buffer."""
         try:
+
             def do_save():
                 if path:
                     self.nvim.command(f"write {path}")
@@ -2533,6 +2577,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_fold(self, line: int = None, all: bool = False) -> dict:
         """Fold code."""
         try:
+
             def do_fold():
                 if all:
                     self.nvim.command("normal! zM")
@@ -2553,6 +2598,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_unfold(self, line: int = None, all: bool = False) -> dict:
         """Unfold code."""
         try:
+
             def do_unfold():
                 if all:
                     self.nvim.command("normal! zR")
@@ -2611,6 +2657,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_comment(self, start_line: int = None, end_line: int = None) -> dict:
         """Toggle comment."""
         try:
+
             def do_comment():
                 # Try native gc operator first (Neovim 0.10+), fall back to Commentary plugin
                 if start_line and end_line:
@@ -2628,6 +2675,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_duplicate_line(self, line: int = None, count: int = 1) -> dict:
         """Duplicate a line."""
         try:
+
             def do_duplicate():
                 if line:
                     self.nvim.func("cursor", line, 1)
@@ -2645,6 +2693,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     ) -> dict:
         """Move line(s) up or down."""
         try:
+
             def do_move():
                 if direction == "up":
                     self.nvim.command("move -2")
@@ -2661,6 +2710,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_delete_line(self, start_line: int = None, end_line: int = None) -> dict:
         """Delete line(s)."""
         try:
+
             def do_delete():
                 if start_line and end_line:
                     self.nvim.command(f"{start_line},{end_line}delete")
@@ -2677,6 +2727,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_join_lines(self, count: int = 2) -> dict:
         """Join lines."""
         try:
+
             def do_join():
                 self.nvim.command(f"normal! {count - 1}J")
 
@@ -2689,6 +2740,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_select_word(self) -> dict:
         """Select word under cursor."""
         try:
+
             def do_select():
                 self.nvim.command("normal! viw")
                 return self.nvim.func("expand", "<cword>")
@@ -2701,6 +2753,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_select_line(self, start_line: int = None, end_line: int = None) -> dict:
         """Select line(s)."""
         try:
+
             def do_select():
                 if start_line and end_line:
                     self.nvim.func("cursor", start_line, 1)
@@ -2733,6 +2786,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_select_all(self) -> dict:
         """Select all content."""
         try:
+
             def do_select():
                 self.nvim.command("normal! ggVG")
                 return self.nvim.func("line", "$")
@@ -2746,6 +2800,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_indent(self, start_line: int = None, end_line: int = None, count: int = 1) -> dict:
         """Increase indentation."""
         try:
+
             def do_indent():
                 if start_line and end_line:
                     for _ in range(count):
@@ -2764,6 +2819,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_dedent(self, start_line: int = None, end_line: int = None, count: int = 1) -> dict:
         """Decrease indentation."""
         try:
+
             def do_dedent():
                 if start_line and end_line:
                     for _ in range(count):
@@ -2796,6 +2852,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
     def _handle_run_command(self, command: str) -> dict:
         """Run a vim command."""
         try:
+
             def do_command():
                 self.nvim.command(command)
 
@@ -3036,7 +3093,7 @@ Example: {"tool": "git_blame", "arguments": {}}""",
         output += f"\n  Total: {len(HIDDEN_TOOLS)} tools\n\n"
         output += "Usage:\n"
         output += '  {"tool": "<name>", "arguments": {...}}\n'
-        output += '\nExample:\n'
+        output += "\nExample:\n"
         output += '  {"tool": "git_blame", "arguments": {}}\n'
 
         return {"tools": output}
