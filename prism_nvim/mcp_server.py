@@ -21,6 +21,51 @@ from mcp.types import Tool as MCPTool
 
 from .nvim_client import NeovimClient
 
+# Tools to HIDE from tools/list (still callable, just not listed)
+# Goal: Expose only ~20 essential tools to save context tokens
+HIDDEN_TOOLS = {
+    # Debug
+    "debug_state",
+    # Buffer details (use edit_buffer instead)
+    "get_buffer_lines", "insert_text", "get_open_files",
+    # Cursor/selection details
+    "get_cursor_position", "set_cursor_position", "get_selection",
+    "select_word", "select_line", "select_block", "select_all",
+    # Window management
+    "split_window", "close_window", "get_windows",
+    # LSP advanced
+    "get_hover_info", "format_file", "get_references", "rename_symbol",
+    "code_actions", "list_symbols", "goto_symbol",
+    # Git advanced
+    "git_stage", "git_commit", "git_blame", "git_log",
+    # Navigation advanced
+    "goto_matching", "jump_back", "jump_forward",
+    # Undo/redo
+    "undo", "redo",
+    # Folding
+    "fold", "unfold",
+    # Bookmarks
+    "bookmark", "goto_bookmark", "list_bookmarks", "delete_bookmark",
+    # Line operations
+    "comment", "duplicate_line", "move_line", "delete_line", "join_lines",
+    # Indentation
+    "indent", "dedent",
+    # Terminal
+    "open_terminal",
+    # Notification/diff
+    "notify", "diff_preview",
+    # Config
+    "get_config", "set_config",
+    # Learning vim
+    "explain_command", "suggest_command", "vim_cheatsheet", "set_trust_mode",
+    # Harpoon
+    "harpoon_add", "harpoon_list", "harpoon_goto", "harpoon_remove",
+    # Trouble/todos
+    "trouble_toggle", "search_todos", "next_todo", "prev_todo",
+    # Spectre
+    "spectre_open", "spectre_word",
+}
+
 
 def _path_matches(buf_name: str, path: str) -> bool:
     """Check if a buffer name matches a path.
@@ -1763,10 +1808,11 @@ Use this when the user says:
         )
 
     def get_mcp_tools(self) -> list[MCPTool]:
-        """Return tools in MCP SDK format."""
+        """Return tools in MCP SDK format (filters hidden tools to save context)."""
         return [
             MCPTool(name=t.name, description=t.description, inputSchema=t.input_schema)
             for t in self.tools.values()
+            if t.name not in HIDDEN_TOOLS
         ]
 
     def call_tool(self, name: str, arguments: dict) -> str:
