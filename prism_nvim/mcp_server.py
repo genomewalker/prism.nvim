@@ -21,7 +21,7 @@ from mcp.types import Tool as MCPTool
 
 from .nvim_client import NeovimClient
 
-# Tools to HIDE from tools/list (still callable, just not listed)
+# Tools to HIDE from tools/list (still callable via advanced gateway)
 # Goal: Expose only ~20 essential tools to save context tokens
 HIDDEN_TOOLS = {
     # Debug
@@ -1801,6 +1801,35 @@ Use this when the user says:
             handler=self._handle_spectre_word,
         )
 
+        # =====================================================================
+        # Advanced Gateway (access to hidden tools)
+        # =====================================================================
+
+        self._register_tool(
+            name="advanced",
+            description="""Gateway to hidden/advanced tools. Use action='list' to see all 60+ hidden tools, or call directly with tool='<name>' and arguments={...}.
+
+Example: {"tool": "git_blame", "arguments": {}}""",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": "Action: 'list' to show available hidden tools",
+                    },
+                    "tool": {
+                        "type": "string",
+                        "description": "Hidden tool name to call",
+                    },
+                    "arguments": {
+                        "type": "object",
+                        "description": "Arguments to pass to the hidden tool",
+                    },
+                },
+            },
+            handler=self._handle_advanced,
+        )
+
     def _register_tool(self, name: str, description: str, input_schema: dict, handler: Callable):
         """Register a tool with the server."""
         self.tools[name] = ToolDef(
@@ -2976,6 +3005,41 @@ Use this when the user says:
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def _handle_advanced(self, action: str = "", tool: str = "", arguments: dict = None) -> dict:
+        """Gateway to hidden/advanced tools."""
+        if arguments is None:
+            arguments = {}
+
+        # If tool specified, call it
+        if tool:
+            if tool not in HIDDEN_TOOLS:
+                return {"error": f"Unknown tool: {tool}. Use action='list' to see available tools."}
+            if tool not in self.tools:
+                return {"error": f"Tool {tool} not registered"}
+
+            # Call the hidden tool
+            try:
+                result = self.tools[tool].handler(**arguments)
+                return {"tool": tool, "result": result}
+            except Exception as e:
+                return {"tool": tool, "error": str(e)}
+
+        # List hidden tools
+        output = "Hidden Tools (callable via advanced gateway)\n"
+        output += "=" * 50 + "\n\n"
+
+        for name in sorted(HIDDEN_TOOLS):
+            if name in self.tools:
+                output += f"  • {name}\n"
+
+        output += f"\n  Total: {len(HIDDEN_TOOLS)} tools\n\n"
+        output += "Usage:\n"
+        output += '  {"tool": "<name>", "arguments": {...}}\n'
+        output += '\nExample:\n'
+        output += '  {"tool": "git_blame", "arguments": {}}\n'
+
+        return {"tools": output}
 
     # =========================================================================
     # Helper Methods
